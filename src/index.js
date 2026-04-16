@@ -102,6 +102,5 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, '0.0.0.0', () => {
     console.log("--------------------------------------------------");
-    console.log(`🚀 TRVNX SERVER LIVE ON: http://192.168.0.103:${PORT}`);
     console.log("--------------------------------------------------");
 });
