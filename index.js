@@ -1,6 +1,5 @@
 import express from "express";
 import mongoose from "mongoose";
-import cors from "cors";
 import morgan from "morgan";
 import helmet from "helmet";
 import path from "path";
@@ -35,13 +34,21 @@ const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARES ---
 
-// ✅ FIXED: CORS moved ABOVE helmet, origin set to 'true', and explicit OPTIONS handler added
-app.use(cors({
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    credentials: true
-}));
-app.options('*', cors());
+// 🚀 NATIVE CORS OVERRIDE - MUST BE FIRST
+app.use((req, res, next) => {
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Instantly kill the preflight request with a 200 OK and the headers
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
+    next();
+});
 
 app.use(helmet());
 
