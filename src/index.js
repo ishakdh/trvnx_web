@@ -106,6 +106,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/settings', settingsRoutes);
 
+app.use('/api/test', (req,res)=>{
+    res.status(200).json({success:true});
+});
+
 // 🚀 NEW: Mount the admin and transaction endpoints so the frontend can hit them!
 app.use('/api/admin', adminRoutes);
 app.use('/api/transactions', transactionRoutes);
