@@ -6,7 +6,7 @@ import helmet from "helmet";
 import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from 'url';
-import { login, register } from './controllers/authController.js';
+import { login, register } from './src/modules/auth/controller/AuthController.js';
 
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);

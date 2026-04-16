@@ -8,7 +8,7 @@ import {
     login,
     getAllOperators,
     toggleStatus
-} from "./controller/authController.js";
+} from "./controller/AuthController.js";
 
 import UserController from "../core/user/UserController.js";
 
