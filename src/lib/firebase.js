@@ -3,12 +3,12 @@ import fs from 'fs';
 import path from 'path';
 
 // Use process.cwd() to reach the root folder from any file
-const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
+//const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
 
 if (!admin.apps.length) {
-    if (fs.existsSync(serviceAccountPath)) {
+    if (process.env.FIREBASE_CREDENTIALS) {
         try {
-            const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+            const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
             });
