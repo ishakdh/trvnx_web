@@ -97,6 +97,7 @@ const seedSuperAdmin = async () => {
     }
 };
 
+
 // Run the function
 seedSuperAdmin().then(res=>console.log(res)).catch(err => console.log(err));
 
