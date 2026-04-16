@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Maps to /api/settings/
 router.get("/", getSettings);
-router.post("/", updateSettings);
+router.patch("/", updateSettings);
 
 // 🚀 NEW: MULTIPLE LICENSE FEE & OFFER ROUTES (Maps to /api/settings/license-fees)
 router.post("/license-fees", createLicenseFee);
