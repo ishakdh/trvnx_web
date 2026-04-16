@@ -2,20 +2,31 @@ const admin = require('firebase-admin');
 const express = require('express');
 const path = require('path'); // Added for file path handling
 
-// 1. IMPORT YOUR FIREBASE KEY
-// const serviceAccount = require("./serviceAccountKey.json");
-//
-// admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount)
-// });
+// ==========================================
+// 1. FIREBASE INITIALIZATION (BASE64 SECURE)
+// ==========================================
 
-// Parse the JSON string from the Coolify environment variable
-const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+// Grab the Base64 string from Coolify environment variables
+const base64Credentials = process.env.FIREBASE_CREDENTIALS;
+
+if (!base64Credentials) {
+    console.error("CRITICAL ERROR: FIREBASE_CREDENTIALS environment variable is missing!");
+    process.exit(1); // Stop the server if the key is missing
+}
+
+// Decode the Base64 string back into normal text
+const decodedString = Buffer.from(base64Credentials, 'base64').toString('utf8');
+
+// Parse the clean string into a JSON object
+const serviceAccount = JSON.parse(decodedString);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
 
+// ==========================================
+// 2. EXPRESS APP SETUP
+// ==========================================
 const app = express();
 app.use(express.json());
 
@@ -82,8 +93,8 @@ app.post('/api/device/location', async (req, res) => {
     }
 });
 
-// Start the server on Port 3000
-const PORT = 3000;
+// Start the server (Using process.env.PORT makes it play nice with Coolify)
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`=========================================`);
     console.log(`TRVNX BACKEND IS ONLINE`);
