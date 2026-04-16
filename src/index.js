@@ -8,7 +8,6 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 
-
 // 🚀 FIXED: Path updated to match your image structure (modules/auth/)
 import authRoutes from './modules/auth/auth.routes.js';
 import deviceRoutes from './routes/deviceRoutes.js';
@@ -24,6 +23,7 @@ import marketingRoutes from './routes/marketing.routes.js';
 // 📍 MISSING LINE ADDED: Import Location routes for Districts/Thanas
 import locationRoutes from './routes/locationRoutes.js';
 import User from "./models/User.js";
+import testRoutes from "./routes/test.routes.js";
 
 dotenv.config();
 const app = express();
@@ -106,9 +106,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/settings', settingsRoutes);
 
-app.use('/api/test', (req,res)=>{
-    res.status(200).json({success:true});
-});
+app.use('/test', testRoutes);
 
 // 🚀 NEW: Mount the admin and transaction endpoints so the frontend can hit them!
 app.use('/api/admin', adminRoutes);
