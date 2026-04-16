@@ -9,7 +9,7 @@ import shopkeeperRoutes from './shopkeeper.routes.js';
 import adminRoutes from './admin.routes.js';
 
 // 🚀 NEW: Imported missing routes that the frontend was trying to reach
-import transactionRoutes from './transection.routs.js'; // <- Fixed to match your exact file spelling
+import transactionRoutes from './transaction.routes.js'; // <- Fixed to match your exact file spelling
 import settingsRoutes from './settings.routes.js';
 
 const router = express.Router();
