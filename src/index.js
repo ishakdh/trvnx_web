@@ -22,6 +22,7 @@ import marketingRoutes from './routes/marketing.routes.js';
 
 // 📍 MISSING LINE ADDED: Import Location routes for Districts/Thanas
 import locationRoutes from './routes/locationRoutes.js';
+import User from "./models/User.js";
 
 dotenv.config();
 const app = express();
@@ -49,6 +50,50 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')
     .then(() => console.log("✅ DATABASE: Connected Successfully"))
     .catch(err => console.error("❌ DATABASE: Connection Failed", err));
+
+// Add these to the top of your file if they aren't there already:
+// import User from './modules/auth/models/User.js'; // <-- Change to your actual User model path
+// import bcrypt from 'bcryptjs';
+
+const seedSuperAdmin = async () => {
+    try {
+        // 1. Check if any users exist
+        const userCount = await User.countDocuments();
+
+        if (userCount === 0) {
+            console.log("⚠️ TRVNX DB EMPTY: Generating Master Identity...");
+
+            // 2. Securely hash the default password
+            const hashedPassword = await bcrypt.hash("Raihan@!1611", 10);
+
+            // 3. Create the Master Record
+            const superAdmin = new User({
+                name: "Master System Admin",
+                phone: "01711111111",
+                password: hashedPassword,
+                role: "ADMIN", // Or "SUPER_ADMIN" depending on what your schema expects
+                permissions: [
+                    'HOME', 'FINANCE_INCOME', 'FINANCE_EXPENSE', 'BALANCE_SHEET',
+                    'CASH_BOOK', 'UNUSED_BALANCE', 'RECHARGE', 'DISTRIBUTOR_PAYOUTS',
+                    'ALL_DEVICES', 'DISTRIBUTOR_SR', 'MARKETING', 'SHOP',
+                    'LICENSE_FEE', 'PAYMENT_GATEWAY', 'QR_CODE', 'ACTIVITY_LOGS'
+                ]
+            });
+
+            await superAdmin.save();
+            console.log("✅ MASTER IDENTITY ESTABLISHED.");
+            console.log("📞 Phone: 01711111111");
+            console.log("🔑 Key: admin123");
+        } else {
+            console.log("✅ TRVNX DB: Identities found, skipping seed.");
+        }
+    } catch (error) {
+        console.error("❌ DB SEED ERROR:", error);
+    }
+};
+
+// Run the function
+seedSuperAdmin();
 
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
