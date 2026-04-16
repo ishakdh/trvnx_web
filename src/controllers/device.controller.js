@@ -226,10 +226,19 @@ export const toggleDeviceLock = async (req, res) => {
     try {
         const { deviceId, action, reason } = req.body;
         const device = await Device.findById(deviceId).populate('shopkeeper_id');
+
         if (!device?.fcm_token) return res.status(400).json({ success: false, message: "Offline" });
 
         const commandToSend = action === 'BLOCK' ? "lock_device" : "unlock_device";
-        await admin.messaging().send({ token: device.fcm_token, data: { command: commandToSend, warning_message: action === 'BLOCK' ? reason : "Unlocked", shop_phone: device.shopkeeper_id?.phone || "Support" }, android: { priority: "high" } });
+        await admin.messaging().send({
+            token: device.fcm_token,
+            data: {
+                command: commandToSend,
+                warning_message: action === 'BLOCK' ? reason : "Unlocked",
+                shop_phone: device.shopkeeper_id?.phone || "Support"
+            },
+            android: { priority: "high" }
+        });
 
         device.is_locked = (action === 'BLOCK');
         await device.save();
@@ -244,7 +253,17 @@ export const toggleDeviceLock = async (req, res) => {
         );
 
         res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+
+    } catch (error) {
+        // Convert the error object to a readable string
+        const errorString = error.message || error.toString();
+
+        // Log it to the Coolify console
+        console.error(`❌ Toggle Lock Error: ${errorString}`);
+
+        // Return it to the frontend so you can see it in your Network tab
+        res.status(500).json({ success: false, error: errorString });
+    }
 };
 
 // 7. Track Location
