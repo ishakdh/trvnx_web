@@ -34,14 +34,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARES ---
-app.use(helmet());
 
-// ✅ YOUR PERFECT CORS FIX
+// ✅ FIXED: CORS moved ABOVE helmet, origin set to 'true', and explicit OPTIONS handler added
 app.use(cors({
-    origin: "*",
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
+app.options('*', cors());
+
+app.use(helmet());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));

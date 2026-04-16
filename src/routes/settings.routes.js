@@ -3,6 +3,7 @@ import { getSettings, updateSettings, createLicenseFee, getAllLicenseFees, toggl
 
 const router = express.Router();
 
+
 // Maps to /api/settings/
 router.get("/", getSettings);
 router.patch("/", updateSettings);
