@@ -17,7 +17,7 @@ if (!admin.apps.length) {
             console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
         }
     } else {
-        console.error("❌ [FIREBASE LIB]: serviceAccountKey.json NOT FOUND at " + serviceAccountPath);
+        console.error("❌ [FIREBASE LIB]: serviceAccountKey.json NOT FOUND at " );
     }
 }
 
