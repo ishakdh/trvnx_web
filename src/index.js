@@ -98,7 +98,7 @@ const seedSuperAdmin = async () => {
 };
 
 // Run the function
-seedSuperAdmin();
+seedSuperAdmin().then(res=>console.log(res)).catch(err => console.log(err));
 
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
