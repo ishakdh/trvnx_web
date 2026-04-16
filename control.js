@@ -3,7 +3,14 @@ const express = require('express');
 const path = require('path'); // Added for file path handling
 
 // 1. IMPORT YOUR FIREBASE KEY
-const serviceAccount = require("./serviceAccountKey.json");
+// const serviceAccount = require("./serviceAccountKey.json");
+//
+// admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount)
+// });
+
+// Parse the JSON string from the Coolify environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)

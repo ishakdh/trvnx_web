@@ -4,8 +4,10 @@ import { join } from 'path';
 
 // Load your service account key
 // Make sure this file exists in your project root or config folder!
-const serviceAccountPath = join(process.cwd(), 'serviceAccountKey.json');
-const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+//const serviceAccountPath = join(process.cwd(), 'serviceAccountKey.json');
+//const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 
 if (!admin.apps.length) {
     try {
