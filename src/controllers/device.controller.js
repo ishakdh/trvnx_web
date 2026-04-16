@@ -1,6 +1,5 @@
 import Device from '../models/Device.js';
 import User from '../models/User.js';
-import Settings from '../models/Settings.js';
 import Transaction from '../models/Transaction.js';
 import LicenseFee from '../models/LicenseFee.js';
 import crypto from 'crypto';
