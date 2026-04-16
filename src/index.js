@@ -8,6 +8,7 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 
+
 // 🚀 FIXED: Path updated to match your image structure (modules/auth/)
 import authRoutes from './modules/auth/auth.routes.js';
 import deviceRoutes from './routes/deviceRoutes.js';
@@ -37,7 +38,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARES ---
-app.use(cors({ origin: "*" }));
+app.use(cors({
+    origin: '*', // For now, allow all domains. You can lock this down to 'https://app.trvnx.com' later.
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
 app.use(express.json());
 app.use(morgan("dev"));
 
