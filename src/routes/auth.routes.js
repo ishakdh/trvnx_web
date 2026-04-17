@@ -1,12 +1,13 @@
-import express from "express";
-import { login } from "../middlewares/auth.controller.js";
-import { protect, authorize } from "../middlewares/auth.middleware.js";
-import User from "../models/User.js";
+import express from 'express';
+// Make sure this path to AuthController is correct based on your folder structure!
+import { register, login } from '../modules/auth/controller/AuthController.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
-router.post("/login", login);
-
+router.post('/register', register);
+router.post('/login', login);
 
 // 🚀 THE UPDATE ROUTE
 router.post('/update-user', protect, authorize('ADMIN'), async (req, res) => {
@@ -16,6 +17,7 @@ router.post('/update-user', protect, authorize('ADMIN'), async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        // Update fields
         if (name) user.name = name;
         if (phone) user.phone = phone;
         if (role) user.role = role;

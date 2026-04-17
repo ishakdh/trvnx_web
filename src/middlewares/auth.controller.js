@@ -53,6 +53,7 @@ export const register = async (req, res) => {
         });
 
         await newUser.save();
+
         // 🚀 TRIGGER ACTIVITY LOG FOR USER CREATION
         if (req.user || actualParentId) {
             await logActivity(
@@ -87,7 +88,7 @@ export const login = async (req, res) => {
             { expiresIn: '24h' }
         );
 
-// 🚀 TRIGGER ACTIVITY LOG FOR LOGIN
+        // 🚀 TRIGGER ACTIVITY LOG FOR LOGIN
         await logActivity(
             user,
             'LOGIN',
@@ -97,7 +98,15 @@ export const login = async (req, res) => {
 
         res.status(200).json({
             token,
-            user: { id: user._id, name: user.name, role: user.role, phone: user.phone, balance: user.balance }
+            // 🚀 FIXED: Added permissions so the frontend dashboard menus load properly!
+            user: {
+                id: user._id,
+                name: user.name,
+                role: user.role,
+                phone: user.phone,
+                balance: user.balance,
+                permissions: user.permissions
+            }
         });
     } catch (error) {
         res.status(500).json({ message: "Login Error" });
@@ -128,7 +137,7 @@ export const toggleStatus = async (req, res) => {
     }
 };
 
-// 🚀 NEW: Secure Mirror Protocol
+// 🚀 Secure Mirror Protocol (Shadow Mode)
 export const mirrorUser = async (req, res) => {
     try {
         const { targetUserId } = req.body;
@@ -156,12 +165,14 @@ export const mirrorUser = async (req, res) => {
 
         res.status(200).json({
             token: mirrorToken,
+            // 🚀 FIXED: Added permissions here as well
             user: {
                 id: targetUser._id,
                 name: targetUser.name,
                 role: targetUser.role,
                 phone: targetUser.phone,
-                balance: targetUser.balance
+                balance: targetUser.balance,
+                permissions: targetUser.permissions
             }
         });
     } catch (error) {
