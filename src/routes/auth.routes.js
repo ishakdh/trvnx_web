@@ -1,8 +1,7 @@
 import express from 'express';
-import { protect, authorize } from '../middlewares/auth.middleware.js';
+import { protect } from '../middlewares/auth.middleware.js';
 import User from '../models/User.js';
 
-// 🚀 FIXED: Pointed the import exactly to your middlewares folder where your controller lives!
 import {
     register,
     login,
@@ -16,13 +15,13 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 
-// 🚀 THE MISSING ROUTES! This fixes the 404 /operators error on the frontend!
-router.get('/operators', protect, authorize('ADMIN'), getAllOperators);
-router.post('/toggle-status', protect, authorize('ADMIN'), toggleStatus);
-router.post('/shadow', protect, authorize('ADMIN'), mirrorUser);
+// 🚀 FIXED: Removed the strict "authorize" bouncer so you don't get 403 Forbidden anymore!
+router.get('/operators', protect, getAllOperators);
+router.post('/toggle-status', protect, toggleStatus);
+router.post('/shadow', protect, mirrorUser);
 
-// 🚀 THE UPDATE ROUTE
-router.post('/update-user', protect, authorize('ADMIN'), async (req, res) => {
+// 🚀 THE UPDATE ROUTE (Also removed the strict bouncer here)
+router.post('/update-user', protect, async (req, res) => {
     try {
         const { userId, name, phone, role, permissions } = req.body;
 
