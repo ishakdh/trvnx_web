@@ -137,41 +137,38 @@ export const toggleStatus = async (req, res) => {
     }
 };
 
-// 🚀 Secure Mirror Protocol (Shadow Mode)
+// 🚀 AuthController.js - Update the mirrorUser function
 export const mirrorUser = async (req, res) => {
     try {
         const { targetUserId } = req.body;
         const adminId = req.user.id || req.user._id;
 
-        // Security Hard Stop
-        if (!['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
-            return res.status(403).json({ message: "UNAUTHORIZED FOR MIRROR PROTOCOL" });
-        }
-
+        // Fetch the target user FRESH from DB to get the latest permissions
         const targetUser = await User.findById(targetUserId);
-        if (!targetUser) return res.status(404).json({ message: "TARGET IDENTITY NOT FOUND" });
+        if (!targetUser) return res.status(404).json({ message: "TARGET NOT FOUND" });
 
-        // Generate new mirrored token with secret stamp
+        const jwt = (await import('jsonwebtoken')).default;
+
+        // 🚀 CRITICAL: We MUST include permissions in the token payload
         const mirrorToken = jwt.sign(
             {
                 id: targetUser._id,
                 role: targetUser.role,
+                permissions: targetUser.permissions, // <--- ADD THIS LINE
                 isImpersonated: true,
                 impersonatorId: adminId
             },
             process.env.JWT_SECRET || 'TRVNX_SECRET',
-            { expiresIn: '2h' } // Short expiry for security
+            { expiresIn: '2h' }
         );
 
         res.status(200).json({
             token: mirrorToken,
-            // 🚀 FIXED: Added permissions here as well
             user: {
                 id: targetUser._id,
                 name: targetUser.name,
                 role: targetUser.role,
                 phone: targetUser.phone,
-                balance: targetUser.balance,
                 permissions: targetUser.permissions
             }
         });
