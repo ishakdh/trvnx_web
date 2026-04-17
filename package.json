@@ -2,10 +2,10 @@
   "name": "rrapp_backend",
   "version": "1.0.0",
   "type": "module",
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -25,16 +25,11 @@
   "devDependencies": {
     "nodemon": "^3.1.14"
   },
-  "description": "```\r {\r  \"android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME\":\r  \"com.rrapp/.MyDeviceAdminReceiver\",",
+  "description": "TRVNX Backend Server",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/applandsys/rrapp_backend.git"
   },
-  "keywords": [],
   "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/applandsys/rrapp_backend/issues"
-  },
-  "homepage": "https://github.com/applandsys/rrapp_backend#readme"
+  "license": "ISC"
 }

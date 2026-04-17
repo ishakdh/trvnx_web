@@ -10,15 +10,16 @@ import { Server } from "socket.io";
 import bcrypt from "bcryptjs";
 
 // --- ROUTE IMPORTS ---
-import authRoutes from './modules/auth/auth.routes.js';
-import deviceRoutes from './routes/deviceRoutes.js';
-import settingsRoutes from './routes/settings.routes.js';
-import adminRoutes from './routes/admin.routes.js';
-import transactionRoutes from './routes/transaction.routes.js';
-import marketingRoutes from './routes/marketing.routes.js';
-import locationRoutes from './routes/locationRoutes.js';
-import testRoutes from "./routes/test.routes.js";
-import User from "./models/User.js";
+// 🚀 FIXED: Pointed to the correct src folder and the consolidated auth.routes.js
+import authRoutes from './src/routes/auth.routes.js';
+import deviceRoutes from './src/routes/deviceRoutes.js';
+import settingsRoutes from './src/routes/settings.routes.js';
+import adminRoutes from './src/routes/admin.routes.js';
+import transactionRoutes from './src/routes/transaction.routes.js';
+import marketingRoutes from './src/routes/marketing.routes.js';
+import locationRoutes from './src/routes/locationRoutes.js';
+import testRoutes from "./src/routes/test.routes.js";
+import User from "./src/models/User.js";
 
 dotenv.config();
 const app = express();
@@ -106,7 +107,8 @@ const seedSuperAdmin = async () => {
     }
 };
 
-seedSuperAdmin();
+// 🚀 FIXED: Added catch to clear the unhandled promise warning
+seedSuperAdmin().catch(err => console.error("Seed Warning:", err));
 
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
@@ -132,7 +134,8 @@ io.on("connection", (socket) => {
         try {
             const { deviceId, command, status } = data;
             if (command === 'full_uninstall' && status === 'SUCCESS') {
-                const Device = (await import('./models/Device.js')).default;
+                // 🚀 FIXED: Pointed to src folder
+                const Device = (await import('./src/models/Device.js')).default;
                 await Device.findByIdAndUpdate(deviceId, { license_status: 'UNINSTALLED', is_locked: false });
                 console.log(`✅ [SOCKET] Device ${deviceId} acknowledged UNINSTALL. Marking Uninstalled.`);
                 io.emit("device_uninstalled_success", { deviceId });
