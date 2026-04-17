@@ -36,7 +36,7 @@ app.get('/', (req, res) => {
     // they are nested inside the larger res.send() backticks.
     res.send(`
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>TRVNX Master Panel</title>
             <style>
@@ -136,23 +136,23 @@ io.on("connection", (socket) => {
 
     // When the phone app sends its IMEI
     socket.on("register_device", async (data) => {
-        console.log(`[REG] Device ${data.imei} is ONLINE`); // FIXED
+        console.log(`[REG] Device ${data.imei} is ONLINE`);
 
-        // Save or update device in MongoDB
+        // 🚀 FIXED: Added $set to satisfy the strict IDE Mongoose types
         await Device.findOneAndUpdate(
             { imei: data.imei },
-            { socketId: socket.id, status: 'online', lastSeen: Date.now() },
+            { $set: { socketId: socket.id, status: 'online', lastSeen: Date.now() } },
             { upsert: true, new: true }
         );
     });
 
     socket.on("disconnect", async () => {
-        console.log(`[DISCONN] Socket Offline: ${socket.id}`); // FIXED
+        console.log(`[DISCONN] Socket Offline: ${socket.id}`);
 
-        // Mark as offline in MongoDB
+        // 🚀 FIXED: Added $set to satisfy the strict IDE Mongoose types
         await Device.findOneAndUpdate(
             { socketId: socket.id },
-            { status: 'offline', lastSeen: Date.now() }
+            { $set: { status: 'offline', lastSeen: Date.now() } }
         );
     });
 });
