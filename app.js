@@ -1,39 +1,91 @@
 import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
+import cors from "cors";
+import morgan from "morgan";
+import path from "path";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { fileURLToPath } from "url";
+import { Server } from "socket.io";
+import bcrypt from "bcryptjs";
 
+// 🚀 RESTORED: All of your main system routes
+import authRoutes from './src/routes/auth.routes.js';
+import deviceRoutes from './src/routes/deviceRoutes.js';
+import settingsRoutes from './src/routes/settings.routes.js';
+import adminRoutes from './src/routes/admin.routes.js';
+import transactionRoutes from './src/routes/transaction.routes.js';
+import marketingRoutes from './src/routes/marketing.routes.js';
+import locationRoutes from './src/routes/locationRoutes.js';
+import User from "./src/models/User.js";
+import testRoutes from "./src/routes/test.routes.js";
 
 dotenv.config();
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const httpServer = createServer(app);
 
-const PORT = process.env.PORT || 5000;
-
-// --- 1. MONGODB DATABASE CONNECTION ---
-// Make sure you have MONGO_URI="your_mongodb_connection_string" in your .env file!
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/trvnx";
-
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("[DB] 🟢 MongoDB Successfully Connected!"))
-    .catch(err => console.log("[DB] 🔴 MongoDB Connection Error:", err));
-
-// --- 2. DATABASE SCHEMA ---
-const deviceSchema = new mongoose.Schema({
-    imei: String,
-    socketId: String,
-    status: { type: String, default: 'offline' },
-    lastSeen: { type: Date, default: Date.now }
+// 🚀 RESTORED: Correct socket initialization for the full app
+const io = new Server(httpServer, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
-const Device = mongoose.model("Device", deviceSchema);
 
-// --- 3. THE WEB DASHBOARD (Frontend) ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(morgan("dev"));
+
+app.set('io', io);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')
+    .then(() => console.log("✅ DATABASE: Connected Successfully"))
+    .catch(err => console.error("❌ DATABASE: Connection Failed", err));
+
+// 🚀 RESTORED: Your Master Admin Seeder
+const seedSuperAdmin = async () => {
+    try {
+        const userCount = await User.countDocuments();
+        if (userCount === 0) {
+            console.log("⚠️ TRVNX DB EMPTY: Generating Master Identity...");
+            const hashedPassword = await bcrypt.hash("Raihan@!1611", 10);
+            const superAdmin = new User({
+                name: "Master System Admin",
+                phone: "01711111111",
+                password: hashedPassword,
+                role: "ADMIN",
+                permissions: [
+                    'HOME', 'FINANCE_INCOME', 'FINANCE_EXPENSE', 'BALANCE_SHEET',
+                    'CASH_BOOK', 'UNUSED_BALANCE', 'RECHARGE', 'DISTRIBUTOR_PAYOUTS',
+                    'ALL_DEVICES', 'DISTRIBUTOR_SR', 'MARKETING', 'SHOP',
+                    'LICENSE_FEE', 'PAYMENT_GATEWAY', 'QR_CODE', 'ACTIVITY_LOGS'
+                ]
+            });
+            await superAdmin.save();
+            console.log("✅ MASTER IDENTITY ESTABLISHED.");
+        } else {
+            console.log("✅ TRVNX DB: Identities found, skipping seed.");
+        }
+    } catch (error) {
+        console.error("❌ DB SEED ERROR:", error);
+    }
+};
+seedSuperAdmin().catch(err => console.error("Seed Warning:", err));
+
+// 🚀 RESTORED: These are the critical lines that fix your 404 Error!
+app.use('/api/auth', authRoutes);
+app.use('/api/devices', deviceRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/test', testRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/marketing', marketingRoutes);
+app.use('/api/locations', locationRoutes);
+
+// --- THE WEB DASHBOARD (Frontend) ---
 app.get('/', (req, res) => {
-    // Note: The escaped backslashes inside this block are CORRECT because
-    // they are nested inside the larger res.send() backticks.
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -104,9 +156,7 @@ app.get('/', (req, res) => {
                         .then(data => alert(data.message));
                 }
 
-                // Load devices when page opens
                 fetchDevices();
-                // Auto-refresh every 5 seconds
                 setInterval(fetchDevices, 5000);
             </script>
         </body>
@@ -114,51 +164,61 @@ app.get('/', (req, res) => {
     `);
 });
 
-// --- 4. THE REST API (Backend) ---
-// Get all devices from DB
-app.get('/api/devices', async (req, res) => {
-    const devices = await Device.find().sort({ lastSeen: -1 });
-    res.json(devices);
-});
-
-// Lock a specific device
-app.get('/api/lock/:socketId', (req, res) => {
-    const targetSocket = req.params.socketId;
-    io.to(targetSocket).emit("remote_lock", { action: "FORCE_LOCK" });
-    console.log(`[API] Target Lock sent to ${targetSocket}`); // FIXED
-    res.json({ success: true, message: "Target Locked!" });
-});
-
-
-// --- 5. SOCKET.IO AGENT TRACKING ---
+// --- SOCKET.IO EVENT TRACKING ---
 io.on("connection", (socket) => {
-    console.log(`[CONN] Socket Connected: ${socket.id}`); // FIXED
+    console.log("🌐 Client connected to Socket.io:", socket.id);
 
-    // When the phone app sends its IMEI
+    // 🚀 RESTORED: Main App Socket Events
+    socket.on("device_acknowledge", async (data) => {
+        try {
+            const { deviceId, command, status } = data;
+            if (command === 'full_uninstall' && status === 'SUCCESS') {
+                const Device = (await import('./src/models/Device.js')).default;
+                await Device.findByIdAndUpdate(deviceId, { license_status: 'UNINSTALLED', is_locked: false });
+                console.log(`✅ [SOCKET] Device ${deviceId} acknowledged UNINSTALL. Marking Uninstalled.`);
+                io.emit("device_uninstalled_success", { deviceId });
+            }
+        } catch (err) {
+            console.error("Socket Ack Error:", err);
+        }
+    });
+
+    // Web Dashboard Socket Events
     socket.on("register_device", async (data) => {
         console.log(`[REG] Device ${data.imei} is ONLINE`);
-
-        // 🚀 FIXED: Added $set to satisfy the strict IDE Mongoose types
-        await Device.findOneAndUpdate(
-            { imei: data.imei },
-            { $set: { socketId: socket.id, status: 'online', lastSeen: Date.now() } },
-            { upsert: true, new: true }
-        );
+        try {
+            // 🚀 FIXED: Added ./src/
+            const Device = (await import('./src/models/Device.js')).default;
+            await Device.findOneAndUpdate(
+                { imei: data.imei },
+                { $set: { socketId: socket.id, status: 'online', lastSeen: new Date() } },
+                { upsert: true, new: true }
+            );
+        } catch(err) {
+            console.error("Device Register Error:", err);
+        }
     });
 
     socket.on("disconnect", async () => {
-        console.log(`[DISCONN] Socket Offline: ${socket.id}`);
-
-        // 🚀 FIXED: Added $set to satisfy the strict IDE Mongoose types
-        await Device.findOneAndUpdate(
-            { socketId: socket.id },
-            { $set: { status: 'offline', lastSeen: Date.now() } }
-        );
+        console.log(`❌ Client disconnected: ${socket.id}`);
+        try {
+            // 🚀 FIXED: Added ./src/
+            const Device = (await import('./src/models/Device.js')).default;
+            await Device.findOneAndUpdate(
+                { socketId: socket.id },
+                { $set: { status: 'offline', lastSeen: new Date() } },
+                { new: true }
+            );
+        } catch(err) {
+            // Fails silently if disconnected client wasn't a registered device
+        }
     });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log("==========================================");
-    console.log(`TRVNX MASTER SERVER LIVE ON PORT ${PORT}`); // FIXED
-    console.log("==========================================");
+// --- START SERVER ---
+const PORT = process.env.PORT || 5000;
+httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log("--------------------------------------------------");
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log("--------------------------------------------------");
 });
