@@ -141,22 +141,22 @@ export const toggleStatus = async (req, res) => {
 export const mirrorUser = async (req, res) => {
     try {
         const { targetUserId } = req.body;
-        const adminId = req.user.id || req.user._id;
 
-        // Fetch the target user FRESH from DB to get the latest permissions
+        // 🚀 CRITICAL: Fetch the user FRESH from the Database
         const targetUser = await User.findById(targetUserId);
-        if (!targetUser) return res.status(404).json({ message: "TARGET NOT FOUND" });
 
+        if (!targetUser) {
+            return res.status(404).json({ message: "Target identity not found" });
+        }
+
+        // 🚀 CRITICAL: We MUST put the LATEST permissions into the token
         const jwt = (await import('jsonwebtoken')).default;
-
-        // 🚀 CRITICAL: We MUST include permissions in the token payload
         const mirrorToken = jwt.sign(
             {
                 id: targetUser._id,
                 role: targetUser.role,
-                permissions: targetUser.permissions, // <--- ADD THIS LINE
-                isImpersonated: true,
-                impersonatorId: adminId
+                permissions: targetUser.permissions, // <--- Using the FRESH DB values
+                isImpersonated: true
             },
             process.env.JWT_SECRET || 'TRVNX_SECRET',
             { expiresIn: '2h' }
@@ -167,9 +167,7 @@ export const mirrorUser = async (req, res) => {
             user: {
                 id: targetUser._id,
                 name: targetUser.name,
-                role: targetUser.role,
-                phone: targetUser.phone,
-                permissions: targetUser.permissions
+                permissions: targetUser.permissions // Sending fresh permissions to frontend
             }
         });
     } catch (error) {
