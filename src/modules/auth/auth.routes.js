@@ -20,7 +20,7 @@ router.post("/login", login);
 
 // 🚀 FIXED: These now perfectly connect to the AdminDashboard fetch requests
 router.get("/operators", getAllOperators);
-router.patch("/toggle-status", toggleStatus);
+router.post("/toggle-status", toggleStatus);
 
 // Protected Core User Route
 router.get(
