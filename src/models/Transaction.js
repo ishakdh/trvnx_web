@@ -10,11 +10,19 @@ const transactionSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
+        // 🚀 FIXED: Added BONUS and BONUS_EXPENSE to the expected list!
         enum: [
-            'DEPOSIT', 'WITHDRAWAL', 'EMI_PAYMENT', 'LICENSE_ACTIVATION',
-            'COMMISSION', 'RECHARGE', 'MANUAL_INCOME', 'MANUAL_EXPENSE',
-            'SR_COMMISSION', 'DISTRIBUTOR_EXPENSE', 'SR_PAYOUT',
-            'PAYOUT_REQUEST', 'SR_PAYOUT_REQUEST' // 🚀 Added SR Request
+            'MANUAL_INCOME',
+            'RECHARGE',
+            'MANUAL_EXPENSE',
+            'COMMISSION',
+            'SR_COMMISSION',
+            'DISTRIBUTOR_EXPENSE',
+            'LICENSE_ACTIVATION',
+            'SR_PAYOUT',
+            'PAYOUT_REQUEST',
+            'BONUS_EXPENSE',
+            'BONUS'
         ]
     },
     status: {
