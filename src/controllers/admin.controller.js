@@ -323,14 +323,14 @@ export const payBonus = async (req, res) => {
 
         // 2. LOGIC FOR SHOPKEEPER (Affects Company Balance Sheet)
         if (targetRole === 'SHOPKEEPER') {
-            // Add to the Shop's usable balance
-            targetUser.balance = (targetUser.balance || 0) + bonusAmount;
-            await targetUser.save();
+
+            // 🚀 FIXED: Using $inc bypasses strict schema validation errors on old user accounts!
+            await User.findByIdAndUpdate(targetId, { $inc: { balance: bonusAmount } });
 
             // Create a formal Ledger Entry so it hits the Balance Sheet/Cashbook as an EXPENSE
             const ledgerEntry = new Transaction({
-                type: 'BONUS_EXPENSE', // 🚀 The frontend is specifically looking for this type!
-                userId: targetUser._id,
+                type: 'BONUS_EXPENSE',
+                userId: targetId,
                 amount: bonusAmount,
                 description: reason || 'Shop Promotional Bonus',
                 status: 'COMPLETED',
@@ -340,8 +340,8 @@ export const payBonus = async (req, res) => {
 
             // Also create an Income entry for the Shop's personal unused balance ledger
             const shopIncomeEntry = new Transaction({
-                type: 'BONUS', // This shows as an 'In' on the Unused Balance statement
-                userId: targetUser._id,
+                type: 'BONUS',
+                userId: targetId,
                 amount: bonusAmount,
                 description: reason || 'Promotional Bonus Received',
                 status: 'COMPLETED',
@@ -350,27 +350,27 @@ export const payBonus = async (req, res) => {
             await shopIncomeEntry.save();
 
             // Trigger Activity Log
-            await logActivity(
-                req.user || { _id: targetUser._id },
-                'BONUS_DEPLOYED',
-                ledgerEntry._id,
-                `Deployed ৳${bonusAmount} Bonus to Shop: ${targetUser.name}`
-            );
+            if (req.user) {
+                await logActivity(
+                    req.user,
+                    'BONUS_DEPLOYED',
+                    ledgerEntry._id,
+                    `Deployed ৳${bonusAmount} Bonus to Shop: ${targetUser.name || 'Unknown'}`
+                );
+            }
 
             // 3. LOGIC FOR DISTRIBUTOR / SR (Hidden from Main Company Ledger)
         } else if (['DISTRIBUTOR', 'SR'].includes(targetRole)) {
-            // Add directly to their earned commission/balance
-            targetUser.balance = (targetUser.balance || 0) + bonusAmount;
-            targetUser.commission_earned = (targetUser.commission_earned || 0) + bonusAmount;
-            await targetUser.save();
 
-            // NOTE: We DO NOT create a 'BONUS_EXPENSE' Transaction here.
-            // This ensures it never touches your main Cash Book or Balance Sheet!
+            // 🚀 FIXED: Using $inc here as well for maximum stability
+            await User.findByIdAndUpdate(targetId, {
+                $inc: { balance: bonusAmount, commission_earned: bonusAmount }
+            });
 
             // We only create a personal commission entry so they see it in their history
             const personalEntry = new Transaction({
-                type: 'SR_COMMISSION', // Fits into their existing payout logic
-                userId: targetUser._id,
+                type: 'SR_COMMISSION',
+                userId: targetId,
                 amount: bonusAmount,
                 description: reason || 'Target Achievement Bonus',
                 status: 'SUCCESS',
@@ -379,12 +379,14 @@ export const payBonus = async (req, res) => {
             await personalEntry.save();
 
             // Trigger Activity Log
-            await logActivity(
-                req.user || { _id: targetUser._id },
-                'BONUS_DEPLOYED',
-                personalEntry._id,
-                `Deployed ৳${bonusAmount} Bonus to ${targetRole}: ${targetUser.name}`
-            );
+            if (req.user) {
+                await logActivity(
+                    req.user,
+                    'BONUS_DEPLOYED',
+                    personalEntry._id,
+                    `Deployed ৳${bonusAmount} Bonus to ${targetRole}: ${targetUser.name || 'Unknown'}`
+                );
+            }
 
         } else {
             return res.status(400).json({ message: "Invalid role for bonus." });
