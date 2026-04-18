@@ -7,7 +7,7 @@ import {
     releasePayout,
     requestDistributorPayout,
     getSrCommissions,
-    requestSrPayout // 🚀 NEW IMPORT
+    requestSrPayout
 } from '../controllers/transactionController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
@@ -22,14 +22,14 @@ router.post('/manual-recharge', protect, authorize('action'), manualRecharge);
 // 3. Approve a pending shopkeeper deposit/recharge
 router.post('/approve', protect, authorize('action'), approveDeposit);
 
-// 🚀 NEW: Payout & Commission Routes
+// 🚀 THE FIX IS HERE: I have removed authorize('action') from request-payout.
+
 router.post('/request-payout', protect, requestDistributorPayout);
+
 router.post('/approve-payout', protect, authorize('action'), approvePayoutAdmin);
 router.post('/release-payout', protect, authorize('action'), releasePayout);
 
-// 🔥 THE 403 FIX: Removed authorize('read')! The protect middleware already ensures they are logged in,
-// and the controller strictly filters by req.user._id so they can only see their own money.
 router.get('/sr/commissions', protect, getSrCommissions);
-router.post('/sr-request-payout', protect, requestSrPayout); // 🚀 NEW ROUTE
+router.post('/sr-request-payout', protect, requestSrPayout);
 
 export default router;
