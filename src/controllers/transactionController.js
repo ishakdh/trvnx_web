@@ -476,41 +476,41 @@ export const rejectSrPayment = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 DISTRIBUTOR PAYOUT REQUEST (FIXED FOR MIRROR MODE)
-// 🚀 MIRROR MODE FIXED VERSION
+// 🚀 SMART PAYOUT ROUTER (Handles both SR and Distributor Payouts intelligently)
 export const requestDistributorPayout = async (req, res) => {
     try {
         const requesterRole = req.user.role;
 
-        // 🚀 THE MIRROR FIX:
-        // If the person clicking the button is an ADMIN, use the 'targetUserId' from the body.
-        // If it's a real Distributor, use their own ID.
-        const userId = (['SUPER_ADMIN', 'ADMIN'].includes(requesterRole) && req.body.targetUserId)
+        // 🚀 MIRROR FIX: Check target user if Admin/Distributor is mirroring
+        const userId = (['SUPER_ADMIN', 'ADMIN', 'DISTRIBUTOR'].includes(requesterRole) && req.body.targetUserId)
             ? req.body.targetUserId
             : req.user?._id;
 
         const { amount } = req.body;
         const requestAmount = Number(amount);
 
-        const distributor = await User.findById(userId);
+        // Find the actual user whose wallet is being drained (could be SR or DISTRIBUTOR)
+        const targetUser = await User.findById(userId);
 
-        if (!distributor) return res.status(404).json({ message: "Distributor not found." });
+        if (!targetUser) return res.status(404).json({ message: "User not found." });
 
-        // Check the balance of the DISTRIBUTOR, not the Admin
-        if (distributor.balance < requestAmount || requestAmount <= 0) {
+        if (targetUser.balance < requestAmount || requestAmount <= 0) {
             return res.status(400).json({ message: "Invalid amount or low balance." });
         }
 
-        // Deduct from the DISTRIBUTOR's wallet
-        distributor.balance -= requestAmount;
-        await distributor.save();
+        targetUser.balance -= requestAmount;
+        await targetUser.save();
+
+        // 🚀 SMART ROUTING LOGIC:
+        // If the user is an SR, route to Distributor. Otherwise, route to Admin.
+        const isSR = targetUser.role === 'SR';
 
         await new Transaction({
             userId: userId,
             amount: requestAmount,
-            type: 'PAYOUT_REQUEST',
-            status: 'PENDING_ADMIN',
-            remarks: `Payout requested ${requesterRole !== 'DISTRIBUTOR' ? '(Via Admin Mirror)' : ''}`
+            type: isSR ? 'SR_PAYOUT_REQUEST' : 'PAYOUT_REQUEST',
+            status: isSR ? 'PENDING' : 'PENDING_ADMIN',
+            remarks: `Payout requested ${requesterRole !== targetUser.role ? '(Via Mirror Mode)' : ''}`
         }).save();
 
         await logActivity(req.user, 'PAYOUT_REQUEST', userId, `Payout requested: ৳${requestAmount}`);
