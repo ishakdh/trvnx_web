@@ -23,7 +23,7 @@ router.post('/manual-recharge', protect, authorize('action'), manualRecharge);
 router.post('/approve', protect, authorize('action'), approveDeposit);
 
 // 🚀 NEW: Payout & Commission Routes
-router.post('/request-payout', protect, authorize('action'), requestDistributorPayout);
+router.post('/request-payout', protect, requestDistributorPayout);
 router.post('/approve-payout', protect, authorize('action'), approvePayoutAdmin);
 router.post('/release-payout', protect, authorize('action'), releasePayout);
 
