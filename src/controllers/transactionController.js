@@ -225,9 +225,10 @@ export const manualRecharge = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
+// 🚀 RELEASE PAYOUT (ADMIN PAYING DISTRIBUTOR)
 export const releasePayout = async (req, res) => {
     try {
-        const { transactionId } = req.body;
+        const { transactionId, txId } = req.body; // 🚀 FIXED: Added txId
         const tx = await Transaction.findById(transactionId).populate('userId');
 
         if (tx.userId.balance < tx.amount) return res.status(400).json({ message: "Low Balance" });
@@ -235,19 +236,19 @@ export const releasePayout = async (req, res) => {
         await User.findByIdAndUpdate(tx.userId._id, { $inc: { balance: -tx.amount } });
         tx.status = 'SUCCESS';
         const slipId = `TRVNX-PAY-${tx._id.toString().slice(-5).toUpperCase()}`;
-        tx.remarks = `Released by Accounts. Invoice ID: ${slipId}`;
+        tx.remarks = `Released by Admin. Bank TxID: ${txId || slipId}`; // 🚀 FIXED: Captures TxID
         await tx.save();
         // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             'PAYOUT_APPROVE',
             tx.userId?._id,
-            `Released Funds to Distributor. Amount: ৳${tx.amount}`
+            `Released Funds to Distributor. Amount: ৳${tx.amount} | TxID: ${txId}`
         );
 
         res.status(200).json({
             success: true,
-            slip: { id: slipId, payee: tx.userId.name, phone: tx.userId.phone, amount: tx.amount, date: tx.updatedAt }
+            slip: { id: txId || slipId, payee: tx.userId.name, phone: tx.userId.phone, amount: tx.amount, date: tx.updatedAt }
         });
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -414,7 +415,7 @@ export const requestSrPayout = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 SR PAYOUT RELEASE (UPDATED FOR INVOICING & DISTRIBUTOR DEDUCTION)
+// 🚀 SR PAYOUT RELEASE (DISTRIBUTOR PAYING SR)
 export const releaseSrPayment = async (req, res) => {
     try {
         const { srId, amount, requestId, accountNumber, txId } = req.body;
@@ -426,26 +427,29 @@ export const releaseSrPayment = async (req, res) => {
         if (!distributor || !sr) return res.status(404).json({ message: "Users not found" });
         if (distributor.balance < amount) return res.status(400).json({ message: "Insufficient Balance." });
 
-        // Deduct from Distributor (SR balance was already deducted during request)
+        // Deduct from Distributor
         distributor.balance -= amount;
         await distributor.save();
 
         await new Transaction({
             userId: srId, amount: amount, type: 'SR_PAYOUT', status: 'SUCCESS',
-            remarks: `Payout by ${distributor.name} | A/C: ${accountNumber} | TxID: ${txId}`
+            remarks: `Payout by ${distributor.name} | A/C: ${accountNumber} | Bank TxID: ${txId}` // 🚀 FIXED
         }).save();
 
 
         if (requestId) {
-            await Transaction.findByIdAndUpdate(requestId, { status: 'RELEASED' });
+            await Transaction.findByIdAndUpdate(requestId, {
+                status: 'RELEASED',
+                remarks: `Approved with Bank TxID: ${txId}` // 🚀 FIXED: Links TxID to request
+            });
         }
 
 // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
-            'WALLET_RECHARGE',
-            null,
-            `Recharged wallet with BDT ${amount}`
+            'PAYOUT_RELEASE',
+            srId,
+            `Released SR Payout. Amount: ৳${amount} | Bank TxID: ${txId}`
         );
 
         res.status(200).json({ success: true, message: "SR Payment Released", slip: { id: txId } });
@@ -455,7 +459,7 @@ export const releaseSrPayment = async (req, res) => {
 // 🚀 REJECT SR PAYOUT (REFUNDS SR WALLET)
 export const rejectSrPayment = async (req, res) => {
     try {
-        const { requestId } = req.body;
+        const { requestId, reason } = req.body; // 🚀 FIXED: Added reason
         const request = await Transaction.findById(requestId);
 
         if (!request || request.status !== 'PENDING') {
@@ -470,6 +474,7 @@ export const rejectSrPayment = async (req, res) => {
         }
 
         request.status = 'REJECTED';
+        request.remarks = `Rejected: ${reason || 'No reason provided'}`; // 🚀 FIXED: Stores rejection reason
         await request.save();
 
         res.status(200).json({ success: true, message: "Payout rejected and funds refunded to SR." });
