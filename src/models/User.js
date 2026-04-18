@@ -65,6 +65,12 @@ const userSchema = new mongoose.Schema({
         default: 'SHOPKEEPER'
     },
 
+    // 🚀 NEW: Added permissions array for dynamic UI routing
+    permissions: {
+        type: [String],
+        default: []
+    },
+
     status: {
         type: String,
         enum: ['ACTIVE', 'INACTIVE', 'LOCKED'],
