@@ -89,7 +89,11 @@ export const login = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            {
+                id: user._id,
+                role: user.role,
+                permissions: user.permissions // 🚀 FIX: The token MUST carry the permissions array!
+            },
             process.env.JWT_SECRET || 'TRVNX_SECRET',
             { expiresIn: '24h' }
         );
@@ -155,8 +159,8 @@ export const mirrorUser = async (req, res) => {
             return res.status(404).json({ message: "Target identity not found" });
         }
 
-        // 🚀 CRITICAL: We MUST put the LATEST permissions into the token
-        const jwt = (await import('jsonwebtoken')).default;
+        // 🚀 FIX: Removed the duplicate 'const jwt = ...' line.
+        // Just use the jwt that is already imported at the top!
         const mirrorToken = jwt.sign(
             {
                 id: targetUser._id,
@@ -173,7 +177,8 @@ export const mirrorUser = async (req, res) => {
             user: {
                 id: targetUser._id,
                 name: targetUser.name,
-                permissions: targetUser.permissions // Sending fresh permissions to frontend
+                role: targetUser.role, // 🚀 FIX: Make sure role is sent back to the frontend!
+                permissions: targetUser.permissions
             }
         });
     } catch (error) {
