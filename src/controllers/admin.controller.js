@@ -362,18 +362,15 @@ export const payBonus = async (req, res) => {
             // 3. LOGIC FOR DISTRIBUTOR / SR (Hidden from Main Company Ledger)
         } else if (['DISTRIBUTOR', 'SR'].includes(targetRole)) {
 
-            // 🚀 FIXED: Map the correct transaction type based on their role
-            // This ensures it goes into the AMOUNT (IN) column!
-            const incomeType = targetRole === 'DISTRIBUTOR' ? 'COMMISSION' : 'SR_COMMISSION';
+            // 🚀 FIXED: Bulletproof check to ensure it logs as COMMISSION
+            const incomeType = String(targetRole).toUpperCase() === 'DISTRIBUTOR' ? 'COMMISSION' : 'SR_COMMISSION';
 
-            // Update their database balance
             await User.findByIdAndUpdate(targetId, {
                 $inc: { balance: bonusAmount, commission_earned: bonusAmount }
             });
 
-            // Create a personal ledger entry with the correct INCOMING type
             const personalEntry = new Transaction({
-                type: incomeType, // <-- BUG FIXED HERE
+                type: incomeType,
                 userId: targetId,
                 amount: bonusAmount,
                 description: reason || 'Target Achievement Bonus',
