@@ -379,10 +379,15 @@ export const getSrCommissions = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 SR PAYOUT REQUEST (UPDATED FOR PARTIAL AMOUNT & IMMEDIATE DEDUCTION)
+// 🚀 SR PAYOUT REQUEST (FIXED FOR MIRROR MODE & TYPO)
 export const requestSrPayout = async (req, res) => {
     try {
-        const srId = req.user._id || req.user.id;
+        const requesterRole = req.user.role;
+        // 🚀 MIRROR FIX: If Admin/Distributor is mirroring an SR, use targetUserId from body
+        const srId = (['SUPER_ADMIN', 'ADMIN', 'DISTRIBUTOR'].includes(requesterRole) && req.body.targetUserId)
+            ? req.body.targetUserId
+            : (req.user._id || req.user.id);
+
         const { amount } = req.body;
         const requestAmount = Number(amount);
 
@@ -395,13 +400,17 @@ export const requestSrPayout = async (req, res) => {
         sr.balance -= requestAmount;
         await sr.save();
 
+        // 🚀 FIXED: Changed 'userId' (which was undefined) to 'srId'
         await new Transaction({
-            userId, amount: requestAmount, type: 'PAYOUT_REQUEST', status: 'PENDING_ADMIN',
-            remarks: "Payout requested by Distributor."
+            userId: srId,
+            amount: requestAmount,
+            type: 'PAYOUT_REQUEST',
+            status: 'PENDING_ADMIN',
+            remarks: `Payout requested ${requesterRole !== 'SR' ? '(Via Admin/Distributor Mirror)' : ''}`
         }).save();
 
-        // 🚀 TRIGGER ACTIVITY LOG
-        await logActivity(req.user, 'PAYOUT_REQUEST', distributor._id, `Distributor requested payout of ৳${requestAmount}`);
+        // 🚀 FIXED: Pass the correct srId to the logger
+        await logActivity(req.user, 'PAYOUT_REQUEST', srId, `Payout requested for amount ৳${requestAmount}`);
 
         res.status(200).json({ success: true, message: "Request sent and balance deducted." });
     } catch (error) { res.status(500).json({ error: error.message }); }
@@ -469,31 +478,49 @@ export const rejectSrPayment = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 DISTRIBUTOR PAYOUT REQUEST (UPDATED FOR PARTIAL AMOUNT & IMMEDIATE DEDUCTION)
+// 🚀 DISTRIBUTOR PAYOUT REQUEST (FIXED FOR MIRROR MODE)
+// 🚀 MIRROR MODE FIXED VERSION
 export const requestDistributorPayout = async (req, res) => {
     try {
-        const userId = req.user?._id;
+        const requesterRole = req.user.role;
+
+        // 🚀 THE MIRROR FIX:
+        // If the person clicking the button is an ADMIN, use the 'targetUserId' from the body.
+        // If it's a real Distributor, use their own ID.
+        const userId = (['SUPER_ADMIN', 'ADMIN'].includes(requesterRole) && req.body.targetUserId)
+            ? req.body.targetUserId
+            : req.user?._id;
+
         const { amount } = req.body;
         const requestAmount = Number(amount);
 
         const distributor = await User.findById(userId);
 
-        if (!distributor) return res.status(404).json({ message: "Not found." });
+        if (!distributor) return res.status(404).json({ message: "Distributor not found." });
+
+        // Check the balance of the DISTRIBUTOR, not the Admin
         if (distributor.balance < requestAmount || requestAmount <= 0) {
             return res.status(400).json({ message: "Invalid amount or low balance." });
         }
 
-        // Deduct immediately so Distributor cannot double-spend
+        // Deduct from the DISTRIBUTOR's wallet
         distributor.balance -= requestAmount;
         await distributor.save();
 
         await new Transaction({
-            userId, amount: requestAmount, type: 'PAYOUT_REQUEST', status: 'PENDING_ADMIN',
-            remarks: "Payout requested by Distributor."
+            userId: userId,
+            amount: requestAmount,
+            type: 'PAYOUT_REQUEST',
+            status: 'PENDING_ADMIN',
+            remarks: `Payout requested ${requesterRole !== 'DISTRIBUTOR' ? '(Via Admin Mirror)' : ''}`
         }).save();
 
+        await logActivity(req.user, 'PAYOUT_REQUEST', userId, `Payout requested: ৳${requestAmount}`);
+
         res.status(200).json({ success: true, message: "Request sent and balance deducted." });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 export const approvePayoutAdmin = async (req, res) => {
