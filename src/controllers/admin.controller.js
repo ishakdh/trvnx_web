@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import ActivityLog from "../models/ActivityLog.js";
 import Transaction from "../models/Transaction.js";
 import Target from "../models/Target.js";
-import Settings from "../models/Settings.js"; // 🚀 Added Settings Import
+import Settings from "../models/Settings.js";
 import { logActivity } from '../utils/logger.js';
 
 // 🚀 BULLETPROOF COMMISSION ENGINE
@@ -153,7 +153,7 @@ export const approveShop = async (req, res) => {
         // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
-            `SHOP_APPROVAL_${action}`,
+            `SHOP_APPROVAL_${action}`, // Ensure 'action' is defined in your real environment, or replace with hardcoded string
             shop._id,
             `${req.user?.role} executed ${action} on Shop: ${shop.name}`
         );
@@ -214,7 +214,7 @@ export const submitManualTransaction = async (req, res) => {
 export const getAccountingLedger = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let query = { type: { $in: ['MANUAL_INCOME', 'RECHARGE', 'MANUAL_EXPENSE', 'COMMISSION', 'SR_COMMISSION', 'DISTRIBUTOR_EXPENSE', 'LICENSE_ACTIVATION', 'SR_PAYOUT', 'PAYOUT_REQUEST'] } };
+        let query = { type: { $in: ['MANUAL_INCOME', 'RECHARGE', 'MANUAL_EXPENSE', 'COMMISSION', 'SR_COMMISSION', 'DISTRIBUTOR_EXPENSE', 'LICENSE_ACTIVATION', 'SR_PAYOUT', 'PAYOUT_REQUEST', 'BONUS_EXPENSE'] } }; // 🚀 Added BONUS_EXPENSE here so it loads in the ledger
 
         if (startDate || endDate) {
             query.createdAt = {};
@@ -230,7 +230,7 @@ export const getAccountingLedger = async (req, res) => {
 export const getUnusedBalance = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let query = { type: { $in: ['RECHARGE', 'LICENSE_ACTIVATION'] } };
+        let query = { type: { $in: ['RECHARGE', 'LICENSE_ACTIVATION', 'BONUS'] } }; // 🚀 Added BONUS so shop unused balance matches
 
         if (startDate || endDate) {
             query.createdAt = {};
@@ -244,7 +244,7 @@ export const getUnusedBalance = async (req, res) => {
             if (!tx.userId || tx.userId.role !== 'SHOPKEEPER') return;
             const shopId = tx.userId._id.toString();
             if (!shopData[shopId]) { shopData[shopId] = { shop_id: tx.userId._id, shop_name: tx.userId.business_name || 'N/A', shop_owner: tx.userId.name, phone: tx.userId.phone, current_balance: 0, history: [] }; }
-            if (tx.type === 'RECHARGE') shopData[shopId].current_balance += tx.amount;
+            if (tx.type === 'RECHARGE' || tx.type === 'BONUS') shopData[shopId].current_balance += tx.amount; // 🚀 Calculate Bonus
             if (tx.type === 'LICENSE_ACTIVATION') shopData[shopId].current_balance -= tx.amount;
             shopData[shopId].history.push({ date: tx.createdAt, type: tx.type, amount: tx.amount, description: tx.description || 'Entry' });
         });
@@ -304,5 +304,96 @@ export const uploadQRCodes = async (req, res) => {
         res.status(200).json({ success: true, message: "QR Codes updated successfully" });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+// 🚀 NEW: Promotional Bonus Logic (Company Expense vs Shop Income)
+export const payBonus = async (req, res) => {
+    try {
+        const { targetId, targetRole, amount, reason, date } = req.body;
+        const bonusAmount = Number(amount);
+
+        if (!targetId || !bonusAmount || bonusAmount <= 0) {
+            return res.status(400).json({ message: "Invalid payload or amount." });
+        }
+
+        // 1. Find the target identity in the database
+        const targetUser = await User.findById(targetId);
+        if (!targetUser) return res.status(404).json({ message: "Recipient not found." });
+
+        // 2. LOGIC FOR SHOPKEEPER (Affects Company Balance Sheet)
+        if (targetRole === 'SHOPKEEPER') {
+            // Add to the Shop's usable balance
+            targetUser.balance = (targetUser.balance || 0) + bonusAmount;
+            await targetUser.save();
+
+            // Create a formal Ledger Entry so it hits the Balance Sheet/Cashbook as an EXPENSE
+            const ledgerEntry = new Transaction({
+                type: 'BONUS_EXPENSE', // 🚀 The frontend is specifically looking for this type!
+                userId: targetUser._id,
+                amount: bonusAmount,
+                description: reason || 'Shop Promotional Bonus',
+                status: 'COMPLETED',
+                createdAt: date ? new Date(date) : new Date()
+            });
+            await ledgerEntry.save();
+
+            // Also create an Income entry for the Shop's personal unused balance ledger
+            const shopIncomeEntry = new Transaction({
+                type: 'BONUS', // This shows as an 'In' on the Unused Balance statement
+                userId: targetUser._id,
+                amount: bonusAmount,
+                description: reason || 'Promotional Bonus Received',
+                status: 'COMPLETED',
+                createdAt: date ? new Date(date) : new Date()
+            });
+            await shopIncomeEntry.save();
+
+            // Trigger Activity Log
+            await logActivity(
+                req.user || { _id: targetUser._id },
+                'BONUS_DEPLOYED',
+                ledgerEntry._id,
+                `Deployed ৳${bonusAmount} Bonus to Shop: ${targetUser.name}`
+            );
+
+            // 3. LOGIC FOR DISTRIBUTOR / SR (Hidden from Main Company Ledger)
+        } else if (['DISTRIBUTOR', 'SR'].includes(targetRole)) {
+            // Add directly to their earned commission/balance
+            targetUser.balance = (targetUser.balance || 0) + bonusAmount;
+            targetUser.commission_earned = (targetUser.commission_earned || 0) + bonusAmount;
+            await targetUser.save();
+
+            // NOTE: We DO NOT create a 'BONUS_EXPENSE' Transaction here.
+            // This ensures it never touches your main Cash Book or Balance Sheet!
+
+            // We only create a personal commission entry so they see it in their history
+            const personalEntry = new Transaction({
+                type: 'SR_COMMISSION', // Fits into their existing payout logic
+                userId: targetUser._id,
+                amount: bonusAmount,
+                description: reason || 'Target Achievement Bonus',
+                status: 'SUCCESS',
+                createdAt: date ? new Date(date) : new Date()
+            });
+            await personalEntry.save();
+
+            // Trigger Activity Log
+            await logActivity(
+                req.user || { _id: targetUser._id },
+                'BONUS_DEPLOYED',
+                personalEntry._id,
+                `Deployed ৳${bonusAmount} Bonus to ${targetRole}: ${targetUser.name}`
+            );
+
+        } else {
+            return res.status(400).json({ message: "Invalid role for bonus." });
+        }
+
+        res.status(200).json({ message: "BONUS_DEPLOYED" });
+
+    } catch (error) {
+        console.error("Bonus Error:", error);
+        res.status(500).json({ message: "Failed to deploy bonus", error: error.message });
     }
 };

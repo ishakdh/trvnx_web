@@ -9,6 +9,7 @@ import upload from '../middlewares/uploadMiddleware.js';
 
 // 🚀 FIXED: Exact path and filename based on your folder structure
 import { mirrorUser } from "../middlewares/auth.controller.js";
+import { payBonus } from '../controllers/admin.controller.js';
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.post("/finance-entry", protect, checkRole, submitManualTransaction);
 router.get("/finance-ledger", protect, checkRole, getAccountingLedger);
 router.get("/unused-balance", protect, checkRole, getUnusedBalance);
 router.post("/shop-recharge", manualShopRecharge);
+router.post('/pay-bonus', protect, payBonus);
 
 // DISTRIBUTOR & SR MANAGEMENT ROUTES
 router.post("/approve-shopkeeper", protect, checkRole, approveShopkeeper);
