@@ -185,3 +185,33 @@ export const mirrorUser = async (req, res) => {
         res.status(500).json({ message: "Mirror Protocol Failed", error: error.message });
     }
 };
+// 🚀 NEW: Function to handle password changes from the frontend
+export const changePassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+
+        // Ensure the request has a user attached (from your auth middleware)
+        if (!req.user || (!req.user.id && !req.user._id)) {
+            return res.status(401).json({ message: "Unauthorized: No user identity found." });
+        }
+
+        const userId = req.user.id || req.user._id;
+
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters." });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: "Identity not found." });
+
+        // Hash the new password before saving it
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+
+        await user.save();
+
+        res.status(200).json({ message: "PASSWORD_UPDATED" });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to update password", error: error.message });
+    }
+};

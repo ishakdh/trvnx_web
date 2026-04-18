@@ -7,13 +7,17 @@ import {
     login,
     getAllOperators,
     toggleStatus,
-    mirrorUser
+    mirrorUser,
+    changePassword // 🚀 FIXED: Added the missing import here!
 } from '../middlewares/auth.controller.js';
 
 const router = express.Router();
 
 router.post('/register', register);
 router.post('/login', login);
+
+// 🚀 FIXED: Changed 'verifyToken' to 'protect' to match your system's security middleware
+router.post('/change-password', protect, changePassword);
 
 // 🚀 FIXED: Removed the strict "authorize" bouncer so you don't get 403 Forbidden anymore!
 router.get('/operators', protect, getAllOperators);
