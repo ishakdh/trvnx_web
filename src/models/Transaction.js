@@ -10,7 +10,6 @@ const transactionSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        // 🚀 FIXED: Added BONUS and BONUS_EXPENSE to the expected list!
         enum: [
             'MANUAL_INCOME',
             'RECHARGE',
@@ -20,6 +19,7 @@ const transactionSchema = new mongoose.Schema({
             'DISTRIBUTOR_EXPENSE',
             'LICENSE_ACTIVATION',
             'SR_PAYOUT',
+            'SR_PAYOUT_REQUEST', // 🚀 ADDED THIS LINE
             'PAYOUT_REQUEST',
             'BONUS_EXPENSE',
             'BONUS'

@@ -379,11 +379,11 @@ export const getSrCommissions = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 SR PAYOUT REQUEST (FIXED FOR MIRROR MODE & TYPO)
+// 🚀 SR PAYOUT REQUEST
 export const requestSrPayout = async (req, res) => {
     try {
         const requesterRole = req.user.role;
-        // 🚀 MIRROR FIX: If Admin/Distributor is mirroring an SR, use targetUserId from body
+        // MIRROR FIX: If Admin/Distributor is mirroring an SR, use targetUserId from body
         const srId = (['SUPER_ADMIN', 'ADMIN', 'DISTRIBUTOR'].includes(requesterRole) && req.body.targetUserId)
             ? req.body.targetUserId
             : (req.user._id || req.user.id);
@@ -400,16 +400,14 @@ export const requestSrPayout = async (req, res) => {
         sr.balance -= requestAmount;
         await sr.save();
 
-        // 🚀 FIXED: Changed 'userId' (which was undefined) to 'srId'
         await new Transaction({
             userId: srId,
             amount: requestAmount,
-            type: 'PAYOUT_REQUEST',
-            status: 'PENDING_ADMIN',
+            type: 'SR_PAYOUT_REQUEST',
+            status: 'PENDING',
             remarks: `Payout requested ${requesterRole !== 'SR' ? '(Via Admin/Distributor Mirror)' : ''}`
         }).save();
 
-        // 🚀 FIXED: Pass the correct srId to the logger
         await logActivity(req.user, 'PAYOUT_REQUEST', srId, `Payout requested for amount ৳${requestAmount}`);
 
         res.status(200).json({ success: true, message: "Request sent and balance deducted." });
