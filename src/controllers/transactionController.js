@@ -540,18 +540,22 @@ export const approvePayoutAdmin = async (req, res) => {
 // 🚀 REJECT DISTRIBUTOR PAYOUT (ADMIN ACTION)
 export const rejectPayoutAdmin = async (req, res) => {
     try {
-        const { transactionId, reason } = req.body;
-        const request = await Transaction.findById(transactionId);
+        // 🚀 FIXED: Accepts both variable names depending on what AdminDashboard sends
+        const { transactionId, requestId, reason } = req.body;
+        const targetId = transactionId || requestId;
 
-        if (!request || request.status !== 'PENDING_ADMIN') {
+        const request = await Transaction.findById(targetId);
+
+        // 🚀 FIXED: Safety check allows rejection for both PENDING and PENDING_ADMIN
+        if (!request || !['PENDING', 'PENDING_ADMIN'].includes(request.status)) {
             return res.status(400).json({ message: "Invalid or already processed request." });
         }
 
-        // Revert the amount back to the Distributor's wallet
-        const distributor = await User.findById(request.userId);
-        if (distributor) {
-            distributor.balance += request.amount;
-            await distributor.save();
+        // Revert the amount back to the Distributor's (or SR's) wallet
+        const userWallet = await User.findById(request.userId);
+        if (userWallet) {
+            userWallet.balance += request.amount;
+            await userWallet.save();
         }
 
         request.status = 'REJECTED';
