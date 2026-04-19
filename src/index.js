@@ -112,7 +112,7 @@ io.on("connection", (socket) => {
 
 // --- START SERVER ---
 // 🚀 FIXED: Changed default port from 5000 to 3000 for Coolify compatibility
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });

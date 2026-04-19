@@ -537,3 +537,29 @@ export const approvePayoutAdmin = async (req, res) => {
         res.status(200).json({ success: true, message: "Sent to Accounts." });
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
+// 🚀 REJECT DISTRIBUTOR PAYOUT (ADMIN ACTION)
+export const rejectPayoutAdmin = async (req, res) => {
+    try {
+        const { transactionId, reason } = req.body;
+        const request = await Transaction.findById(transactionId);
+
+        if (!request || request.status !== 'PENDING_ADMIN') {
+            return res.status(400).json({ message: "Invalid or already processed request." });
+        }
+
+        // Revert the amount back to the Distributor's wallet
+        const distributor = await User.findById(request.userId);
+        if (distributor) {
+            distributor.balance += request.amount;
+            await distributor.save();
+        }
+
+        request.status = 'REJECTED';
+        request.remarks = `Rejected by Admin: ${reason || 'No reason provided'}`;
+        await request.save();
+
+        res.status(200).json({ success: true, message: "Payout rejected and funds refunded." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
