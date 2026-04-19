@@ -298,31 +298,37 @@ export const activateLicense = async (req, res) => {
     }
 };
 
-// 🚀 SMART PENDING ROUTER: Sends requests to the correct higher-up authority
+// 🚀 SMART PENDING ROUTER (Upgraded with Mirror Mode Support)
 export const getPendingTransactions = async (req, res) => {
     try {
-        const userRole = req.user.role;
-        const userId = req.user._id || req.user.id;
+        // Check if frontend is passing targetUserId in the URL (e.g., ?targetUserId=123)
+        const isMirroring = ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role) && req.query.targetUserId;
+        const targetUserId = isMirroring ? req.query.targetUserId : (req.user._id || req.user.id);
 
-        if (['SUPER_ADMIN', 'ADMIN'].includes(userRole)) {
-            // 👑 ADMIN DASHBOARD: Only sees Distributor requests
+        let activeRole = req.user.role;
+
+        // If mirroring, look up the real role of the person we are mirroring
+        if (isMirroring) {
+            const targetUser = await User.findById(targetUserId);
+            if (targetUser) activeRole = targetUser.role;
+        }
+
+        if (['SUPER_ADMIN', 'ADMIN'].includes(activeRole)) {
+            // 👑 ADMIN VIEW
             const pendingAdmin = await Transaction.find({ status: 'PENDING_ADMIN' })
                 .populate('userId', 'name phone balance')
                 .sort({ createdAt: -1 });
 
             return res.status(200).json(pendingAdmin);
 
-        } else if (userRole === 'DISTRIBUTOR') {
-            // 📦 DISTRIBUTOR DASHBOARD: Only sees SR requests from THEIR specific SRs
-
-            // First, find all SRs that belong to this Distributor
+        } else if (activeRole === 'DISTRIBUTOR') {
+            // 📦 DISTRIBUTOR VIEW
             const mySrs = await User.find({
-                $or: [{ parent_id: userId }, { createdBy: userId }]
+                $or: [{ parent_id: targetUserId }, { createdBy: targetUserId }]
             }).select('_id');
 
             const srIds = mySrs.map(sr => sr._id);
 
-            // Next, find pending payout requests specifically from those SRs
             const pendingDist = await Transaction.find({
                 status: 'PENDING',
                 type: 'SR_PAYOUT_REQUEST',
@@ -333,7 +339,6 @@ export const getPendingTransactions = async (req, res) => {
             return res.status(200).json(pendingDist);
         }
 
-        // Fallback for other roles
         res.status(200).json([]);
     } catch (error) {
         res.status(500).json({ message: "Fetch failed" });
@@ -396,18 +401,26 @@ export const approveShopkeeper = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// 🚀 UPDATED: Now fetches both Earnings and Payout Requests so the SR can see their ledger
+// 🚀 SR COMMISSIONS ROUTER (Upgraded with Mirror Mode Support)
 export const getSrCommissions = async (req, res) => {
     try {
-        const user = req.user;
+        const isMirroring = ['SUPER_ADMIN', 'ADMIN', 'DISTRIBUTOR'].includes(req.user.role) && req.query.targetUserId;
+        const targetUserId = isMirroring ? req.query.targetUserId : (req.user._id || req.user.id);
 
-        // 🚀 FIXED: Added 'SR_PAYOUT_REQUEST' and 'SR_PAYOUT' to the query!
         let query = {
             type: { $in: ['COMMISSION', 'SR_COMMISSION', 'SR_PAYOUT_REQUEST', 'SR_PAYOUT'] }
         };
 
-        if (user.role === 'SR') {
-            query.userId = user._id || user.id;
+        let isTargetSR = req.user.role === 'SR';
+
+        if (isMirroring) {
+            const target = await User.findById(targetUserId);
+            if (target && target.role === 'SR') isTargetSR = true;
+        }
+
+        // Strictly fetch only for this specific SR
+        if (isTargetSR) {
+            query.userId = targetUserId;
         }
 
         const comms = await Transaction.find(query)
