@@ -298,11 +298,46 @@ export const activateLicense = async (req, res) => {
     }
 };
 
+// 🚀 SMART PENDING ROUTER: Sends requests to the correct higher-up authority
 export const getPendingTransactions = async (req, res) => {
     try {
-        const pending = await Transaction.find({ status: 'PENDING' }).populate('userId', 'name phone balance');
-        res.status(200).json(pending);
-    } catch (error) { res.status(500).json({ message: "Fetch failed" }); }
+        const userRole = req.user.role;
+        const userId = req.user._id || req.user.id;
+
+        if (['SUPER_ADMIN', 'ADMIN'].includes(userRole)) {
+            // 👑 ADMIN DASHBOARD: Only sees Distributor requests
+            const pendingAdmin = await Transaction.find({ status: 'PENDING_ADMIN' })
+                .populate('userId', 'name phone balance')
+                .sort({ createdAt: -1 });
+
+            return res.status(200).json(pendingAdmin);
+
+        } else if (userRole === 'DISTRIBUTOR') {
+            // 📦 DISTRIBUTOR DASHBOARD: Only sees SR requests from THEIR specific SRs
+
+            // First, find all SRs that belong to this Distributor
+            const mySrs = await User.find({
+                $or: [{ parent_id: userId }, { createdBy: userId }]
+            }).select('_id');
+
+            const srIds = mySrs.map(sr => sr._id);
+
+            // Next, find pending payout requests specifically from those SRs
+            const pendingDist = await Transaction.find({
+                status: 'PENDING',
+                type: 'SR_PAYOUT_REQUEST',
+                userId: { $in: srIds }
+            }).populate('userId', 'name phone balance')
+                .sort({ createdAt: -1 });
+
+            return res.status(200).json(pendingDist);
+        }
+
+        // Fallback for other roles
+        res.status(200).json([]);
+    } catch (error) {
+        res.status(500).json({ message: "Fetch failed" });
+    }
 };
 
 export const getSettings = async (req, res) => {
@@ -361,11 +396,15 @@ export const approveShopkeeper = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
+// 🚀 UPDATED: Now fetches both Earnings and Payout Requests so the SR can see their ledger
 export const getSrCommissions = async (req, res) => {
     try {
         const user = req.user;
 
-        let query = { type: { $in: ['COMMISSION', 'SR_COMMISSION'] } };
+        // 🚀 FIXED: Added 'SR_PAYOUT_REQUEST' and 'SR_PAYOUT' to the query!
+        let query = {
+            type: { $in: ['COMMISSION', 'SR_COMMISSION', 'SR_PAYOUT_REQUEST', 'SR_PAYOUT'] }
+        };
 
         if (user.role === 'SR') {
             query.userId = user._id || user.id;
@@ -377,7 +416,9 @@ export const getSrCommissions = async (req, res) => {
             .sort({ createdAt: -1 });
 
         res.status(200).json(comms);
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 // 🚀 SR PAYOUT REQUEST
