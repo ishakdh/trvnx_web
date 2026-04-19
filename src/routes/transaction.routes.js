@@ -41,7 +41,7 @@ router.get('/sr/commissions', protect, getSrCommissions);
 router.post('/sr-request-payout', protect, requestSrPayout);
 
 // 🚀 THESE ROUTES NOW USE THE CORRECT FUNCTION NAMES
-router.post('/release-sr-payment', protect, authorize('action'), releaseSrPayment);
-router.post('/reject-sr-payment', protect, authorize('action'), rejectSrPayment);
+router.post('/release-sr-payment', protect, releaseSrPayment);
+router.post('/reject-sr-payment', protect, rejectSrPayment);
 
 export default router;
