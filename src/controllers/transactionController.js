@@ -540,14 +540,23 @@ export const approvePayoutAdmin = async (req, res) => {
 // 🚀 REJECT DISTRIBUTOR PAYOUT (ADMIN ACTION)
 export const rejectPayoutAdmin = async (req, res) => {
     try {
-        // 🚀 FIXED: Accepts both variable names depending on what AdminDashboard sends
-        const { transactionId, requestId, reason } = req.body;
-        const targetId = transactionId || requestId;
+        // Log exactly what the frontend is sending
+        console.log("Reject Payload received:", req.body);
+
+        // Try to grab the ID from any possible name the frontend might be using
+        const targetId = req.body.transactionId || req.body.requestId || req.body.id || req.body._id;
+
+        if (!targetId) {
+            return res.status(400).json({ message: "No valid ID provided in the request payload." });
+        }
 
         const request = await Transaction.findById(targetId);
 
-        // 🚀 FIXED: Safety check allows rejection for both PENDING and PENDING_ADMIN
-        if (!request || !['PENDING', 'PENDING_ADMIN'].includes(request.status)) {
+        if (!request) {
+            return res.status(404).json({ message: "Transaction not found in database." });
+        }
+
+        if (!['PENDING', 'PENDING_ADMIN'].includes(request.status)) {
             return res.status(400).json({ message: "Invalid or already processed request." });
         }
 
@@ -559,11 +568,12 @@ export const rejectPayoutAdmin = async (req, res) => {
         }
 
         request.status = 'REJECTED';
-        request.remarks = `Rejected by Admin: ${reason || 'No reason provided'}`;
+        request.remarks = `Rejected by Admin: ${req.body.reason || 'No reason provided'}`;
         await request.save();
 
         res.status(200).json({ success: true, message: "Payout rejected and funds refunded." });
     } catch (error) {
+        console.error("Reject Admin Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
