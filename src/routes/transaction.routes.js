@@ -17,7 +17,7 @@ import { protect, authorize } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
 // 1. Fetch all pending transactions for the Finance Terminal
-router.get('/pending', protect, authorize('read'), getPendingTransactions);
+router.get('/pending', protect, getPendingTransactions);
 
 // 2. Process a manual recharge from the Admin Dashboard
 router.post('/manual-recharge', protect, authorize('action'), manualRecharge);
