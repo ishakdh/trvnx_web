@@ -16,7 +16,7 @@ const router = express.Router();
 console.log("🚨 ADMIN ROUTES FILE IS OFFICIALLY LOADED! 🚨");
 
 const checkRole = (req, res, next) => {
-    if (req.user && ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTS', 'DISTRIBUTOR'].includes(req.user.role)) {
+    if (req.user && ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTS', 'DISTRIBUTOR', 'SR'].includes(req.user.role)) {
         next();
     } else {
         return res.status(401).json({ message: "Security Block: Unauthorized Role" });
