@@ -7,7 +7,9 @@ import {
     releasePayout,
     requestDistributorPayout,
     getSrCommissions,
-    requestSrPayout
+    requestSrPayout,
+    rejectPayoutAdmin,
+    rejectSrPayout
 } from '../controllers/transactionController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
@@ -22,14 +24,20 @@ router.post('/manual-recharge', protect, authorize('action'), manualRecharge);
 // 3. Approve a pending shopkeeper deposit/recharge
 router.post('/approve', protect, authorize('action'), approveDeposit);
 
+// ==========================================
+// Distributor Payout actions
+// ==========================================
 // 🚀 THE FIX IS HERE: I have removed authorize('action') from request-payout.
-
 router.post('/request-payout', protect, requestDistributorPayout);
-
 router.post('/approve-payout', protect, authorize('action'), approvePayoutAdmin);
 router.post('/release-payout', protect, authorize('action'), releasePayout);
+router.post('/reject-payout', protect, authorize('action'), rejectPayoutAdmin);
 
+// ==========================================
+// SR Payout actions
+// ==========================================
 router.get('/sr/commissions', protect, getSrCommissions);
 router.post('/sr-request-payout', protect, requestSrPayout);
+router.post('/reject-sr-payment', protect, authorize('action'), rejectSrPayout);
 
 export default router;
