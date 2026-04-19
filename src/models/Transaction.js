@@ -19,7 +19,7 @@ const transactionSchema = new mongoose.Schema({
             'DISTRIBUTOR_EXPENSE',
             'LICENSE_ACTIVATION',
             'SR_PAYOUT',
-            'SR_PAYOUT_REQUEST', // 🚀 ADDED THIS LINE
+            'SR_PAYOUT_REQUEST',
             'PAYOUT_REQUEST',
             'BONUS_EXPENSE',
             'BONUS'
@@ -27,9 +27,8 @@ const transactionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'SUCCESS', 'FAILED', 'COMPLETED', 'Waiting for approval', 'Waiting for release', 'Complete', 'PENDING_MFS', 'PENDING_ADMIN', 'PENDING_ACCOUNTS'],
-        default: 'PENDING'
-    },
+        enum: ['PENDING', 'PENDING_ADMIN', 'SUCCESS', 'RELEASED', 'REJECTED']
+    }, // 🚀 FIXED: Added the required comma here
     remarks: { type: String },
 
     shop_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
