@@ -1,5 +1,6 @@
 import express from 'express';
-// 🚀 FIXED: Goes UP (../) then DOWN into src/controllers
+import { pushAppUpdate } from '../controllers/device.controller.js';
+import express from 'express';
 import {
     getShopDevices,
     registerDevice,
@@ -10,13 +11,15 @@ import {
     collectEmi,
     extendDueDate,
     uninstallDevice,
-    confirmUninstallStatus // 🚀 NEW: Added missing import for the handshake
+    confirmUninstallStatus,
+    pushAppUpdate // 🚀 Cleaned up to live with the others
 } from '../controllers/device.controller.js';
 
 const router = express.Router();
 
 router.get('/shop/:shopId', getShopDevices);
 router.post('/register', registerDevice);
+router.post('/update-app', pushAppUpdate);
 
 // 🚀 THE FIX: Changed from '/activate' to '/app-activate' to perfectly match the Android App!
 router.post('/app-activate', activateAppLicense);

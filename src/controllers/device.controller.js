@@ -385,3 +385,38 @@ export const getAllDevices = async (req, res) => {
         res.status(200).json({ success: true, devices });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
+// 14. Push Silent App Update
+export const pushAppUpdate = async (req, res) => {
+    try {
+        const { deviceId, apkUrl } = req.body;
+        const device = await Device.findById(deviceId);
+
+        if (!device?.fcm_token) {
+            return res.status(400).json({ success: false, message: "Device is OFFLINE or has no active connection token." });
+        }
+
+        // Send the command via Firebase Admin SDK
+        await admin.messaging().send({
+            token: device.fcm_token,
+            data: {
+                command: "update_app",
+                url: apkUrl || "https://server.trvnx.com/downloads/trvnx-v2.apk"
+            },
+            android: { priority: "high" }
+        });
+
+        // 🚀 TRIGGER ACTIVITY LOG
+        await logActivity(
+            req.user,
+            'PUSH_UPDATE',
+            device._id,
+            `Pushed silent app update to device.`,
+            device.imei
+        );
+
+        res.status(200).json({ success: true, message: "Update command dispatched successfully." });
+    } catch (error) {
+        console.error("🔥 Firebase Update Error:", error);
+        res.status(500).json({ success: false, message: `Firebase failed: ${error.message}` });
+    }
+};
