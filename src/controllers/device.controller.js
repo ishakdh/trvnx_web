@@ -56,7 +56,16 @@ export const registerDevice = async (req, res) => {
         for (let i = 1; i <= months; i++) {
             offlineOtps.push({ month: i, open_otp: Math.floor(100000 + Math.random() * 900000).toString(), ex_otp: Math.floor(100000 + Math.random() * 900000).toString(), is_used: false });
         }
-        const newDevice = new Device({ ...payload, paid_so_far: Number(payload.down_payment) || 0, license_key: licenseKey, offline_otps: offlineOtps, customer_photo: photoPath, nid_card: nidPath, next_due_date: payload.emi_start_date || new Date() });
+        const newDevice = new Device({
+            ...payload,
+            auto_lock: payload.auto_lock !== undefined ? payload.auto_lock : true,
+            paid_so_far: Number(payload.down_payment) || 0,
+            license_key: licenseKey,
+            offline_otps: offlineOtps,
+            customer_photo: photoPath,
+            nid_card: nidPath,
+            next_due_date: payload.emi_start_date || new Date()
+        });
         await newDevice.save();
         res.status(201).json({ success: true, licenseKey });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -163,8 +172,12 @@ export const activateAppLicense = async (req, res) => {
             next_due_date_ms: device.next_due_date ? new Date(device.next_due_date).getTime() : Date.now(),
             offline_otps: device.offline_otps,
             display_data: {
-                customer: { user_id: device._id, name: device.customer_name, address: device.customer_address },
-                owner: { shop_name: device.shopkeeper_id?.name || "TRVNX Admin", shop_phone: device.shopkeeper_id?.phone || "Support" }
+                customer: { user_id: device._id, name: device.customer_name, phone: device.customer_phone },
+                owner: {
+                    shop_name: device.shopkeeper_id?.name || "Lindux Soft Tech",
+                    address: device.shopkeeper_id?.address?.district || "Bangladesh",
+                    shop_phone: device.shopkeeper_id?.phone || "Support"
+                }
             }
         });
     } catch (error) {
@@ -418,5 +431,44 @@ export const pushAppUpdate = async (req, res) => {
     } catch (error) {
         console.error("🔥 Firebase Update Error:", error);
         res.status(500).json({ success: false, message: `Firebase failed: ${error.message}` });
+    }
+};
+// 🚀 NEW: THE AUTOMATED LOCKING ENGINE
+// This function scans for overdue payments and locks devices ONLY if auto_lock is TRUE
+export const runAutomatedDueCheck = async (io) => {
+    try {
+        const now = new Date();
+
+        // 1. Find devices: Past due date, NOT already locked, and AUTO_LOCK is enabled
+        const overdueDevices = await Device.find({
+            next_due_date: { $lt: now },
+            is_locked: false,
+            auto_lock: true, // 👈 THIS IS YOUR NEW FILTER
+            license_status: 'ACTIVATED'
+        }).populate('shopkeeper_id');
+
+        console.log(`[CRON] Scanning for overdue... Found ${overdueDevices.length} targets.`);
+
+        for (const device of overdueDevices) {
+            if (device.fcm_token) {
+                // 2. Send Lock Signal via Firebase
+                await admin.messaging().send({
+                    token: device.fcm_token,
+                    data: {
+                        command: "lock_device",
+                        warning_message: "EMI Overdue: Please contact shop.",
+                        shop_phone: device.shopkeeper_id?.phone || "Support"
+                    },
+                    android: { priority: "high" }
+                });
+
+                // 3. Update Database
+                device.is_locked = true;
+                await device.save();
+                console.log(`[AUTO-LOCK] Locked device for ${device.customer_name} (Overdue)`);
+            }
+        }
+    } catch (err) {
+        console.error("Automated Lock Error:", err);
     }
 };

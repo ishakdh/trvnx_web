@@ -1,25 +1,32 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const User = require('./src/models/User.js'); // Import the model we just made
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import User from './src/models/User.js';
+// 🚀 1. Import the new controller function
+import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// CONNECT TO MONGODB
-// Make sure MongoDB is running on your computer!
-mongoose.connect('mongodb://127.0.0.1:27017/trvnx_os')
-    .then(() => console.log("Connected to TRVNX Database"))
-    .catch(err => console.log("DB Connection Error: ", err));
+// 🚀 2. Initialize the interval AFTER app is created
+// Run the check every 6 hours
+setInterval(() => {
+    // Note: This assumes you have 'io' set on app in your main App.js
+    const io = app.get('io');
+    runAutomatedDueCheck(io);
+}, 21600000);
 
-// NEW API: Register a User (with your specific address blueprint)
+// CONNECT TO MONGODB
+mongoose.connect('mongodb://127.0.0.1:27017/trvnx_os')
+    .then(() => console.log("✅ Connected to TRVNX Database"))
+    .catch(err => console.log("❌ DB Connection Error: ", err));
+
+// Register API
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password, role, address } = req.body;
-
-        // Hash the password for security
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
@@ -42,4 +49,4 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+app.listen(5000, () => console.log("🚀 Server running on port 5000"));

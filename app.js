@@ -19,6 +19,7 @@ import marketingRoutes from './src/routes/marketing.routes.js';
 import locationRoutes from './src/routes/locationRoutes.js';
 import User from "./src/models/User.js";
 import testRoutes from "./src/routes/test.routes.js";
+import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
 
 dotenv.config();
 const app = express();
@@ -38,6 +39,10 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(morgan("dev"));
 
 app.set('io', io);
+// 🚀 TRIGGER AUTOMATED DUE LOCK CHECK EVERY 6 HOURS
+setInterval(() => {
+    runAutomatedDueCheck(io);
+}, 21600000);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')

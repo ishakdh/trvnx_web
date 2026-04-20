@@ -18,6 +18,7 @@ const deviceSchema = new mongoose.Schema({
     monthly_emi: { type: Number, required: true },
     installment_months: { type: Number, required: true },
     next_due_date: { type: Date, required: true },
+    auto_lock: { type: Boolean, default: true },
     paid_so_far: { type: Number, default: 0 },
     next_emi_override: { type: Number, default: null },
 
