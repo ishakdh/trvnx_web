@@ -45,21 +45,33 @@ export const getShopDevices = async (req, res) => {
 };
 
 // 2. Register a new device
+// 2. Register a new device
 export const registerDevice = async (req, res) => {
     try {
         const payload = req.body;
         const licenseKey = `TRVNX-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
         const photoPath = req.files && req.files['customer_photo'] ? req.files['customer_photo'][0].path : null;
         const nidPath = req.files && req.files['nid_card'] ? req.files['nid_card'][0].path : null;
+
+        // 🚀 Ensure these are parsed as clean Numbers
         const months = Number(payload.installment_months) || 1;
+        const tp = Number(payload.total_price) || 0;
+        const dp = Number(payload.down_payment) || 0;
+        const calculatedEmi = Math.round((tp - dp) / months);
+
         const offlineOtps = [];
         for (let i = 1; i <= months; i++) {
             offlineOtps.push({ month: i, open_otp: Math.floor(100000 + Math.random() * 900000).toString(), ex_otp: Math.floor(100000 + Math.random() * 900000).toString(), is_used: false });
         }
+
         const newDevice = new Device({
             ...payload,
             auto_lock: payload.auto_lock !== undefined ? payload.auto_lock : true,
-            paid_so_far: Number(payload.down_payment) || 0,
+            total_price: tp,             // 🚀 Force Number
+            down_payment: dp,            // 🚀 Force Number
+            installment_months: months,  // 🚀 Explicitly save the correct number
+            monthly_emi: calculatedEmi,  // 🚀 Explicitly save the calculated EMI
+            paid_so_far: dp,             // 🚀 Down payment IS what is paid so far
             license_key: licenseKey,
             offline_otps: offlineOtps,
             customer_photo: photoPath,
@@ -68,7 +80,10 @@ export const registerDevice = async (req, res) => {
         });
         await newDevice.save();
         res.status(201).json({ success: true, licenseKey });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    } catch (error) {
+        console.error("Registration Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
 
 // 3. Activate License (🚀 STRICT & FLEXIBLE MATRIX MATCHING)
@@ -187,22 +202,53 @@ export const activateAppLicense = async (req, res) => {
 };
 
 // 4. Collect EMI Payment
+// 4. Collect EMI Payment
 export const collectEmi = async (req, res) => {
     try {
-        const { deviceId, amountPaid } = req.body;
+        // 🚀 Added emiMonth to catch what the React frontend sends
+        const { deviceId, amountPaid, emiMonth } = req.body;
         const device = await Device.findById(deviceId);
+
         const received = Number(amountPaid);
         const tp = Number(device.total_price) || 0;
         const dp = Number(device.down_payment) || 0;
         const months = Number(device.installment_months) || 1;
         const trueBaseEmi = Math.round((tp - dp) / months);
+
         device.paid_so_far += received;
-        device.payment_history.push({ date: new Date(), amount: received, remark: "EMI Paid" });
+
+        // 🚀 Track exactly which month they paid for in the logs
+        device.payment_history.push({
+            date: new Date(),
+            amount: received,
+            remark: `EMI Paid (Month ${emiMonth || 'Unknown'})`
+        });
+
         let nextDue = device.next_due_date ? new Date(device.next_due_date) : new Date();
-        if (received >= trueBaseEmi) { nextDue.setMonth(nextDue.getMonth() + 1); device.next_due_date = nextDue; }
+        if (received >= trueBaseEmi) {
+            nextDue.setMonth(nextDue.getMonth() + 1);
+            device.next_due_date = nextDue;
+        }
+
+        // 🚀 THE FIX: AUTOMATICALLY UNLOCK THE PHONE IF IT WAS LOCKED
+        if (device.is_locked) {
+            device.is_locked = false;
+            if (device.fcm_token) {
+                await admin.messaging().send({
+                    token: device.fcm_token,
+                    data: { command: "unlock_device" },
+                    android: { priority: "high" }
+                });
+                console.log(`[EMI PAID] Auto-unlocked device for ${device.customer_name}`);
+            }
+        }
+
         await device.save();
         res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+    } catch (error) {
+        console.error("Collect EMI Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
 
 // 5. Extend Due Date & Remote Unlock
