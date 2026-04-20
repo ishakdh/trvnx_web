@@ -270,7 +270,12 @@ export const trackDevice = async (req, res) => {
     try {
         const { deviceId, reason } = req.body;
         const device = await Device.findById(deviceId);
-        if (!device?.fcm_token) return res.status(400).json({ success: false });
+
+        // 🚀 FIXED: Send a real error message back to the frontend!
+        if (!device?.fcm_token) {
+            return res.status(400).json({ success: false, message: "Device is OFFLINE or has no active connection token." });
+        }
+
         await admin.messaging().send({ token: device.fcm_token, data: { command: "track_location", device_id: deviceId.toString(), reason: reason || "System Track" }, android: { priority: "high" } });
 
         // 🚀 TRIGGER ACTIVITY LOG
@@ -282,8 +287,10 @@ export const trackDevice = async (req, res) => {
             device.imei
         );
 
-        res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+        res.status(200).json({ success: true, message: "Track command dispatched." });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Firebase connection failed." });
+    }
 };
 
 // 8. Update Location
