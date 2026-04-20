@@ -289,7 +289,9 @@ export const trackDevice = async (req, res) => {
 
         res.status(200).json({ success: true, message: "Track command dispatched." });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Firebase connection failed." });
+        // 🚀 FIXED: Print the exact reason Firebase failed to the console and frontend!
+        console.error("🔥 Firebase Track Error:", error);
+        res.status(500).json({ success: false, message: `Firebase failed: ${error.message}` });
     }
 };
 
