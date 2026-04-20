@@ -479,26 +479,20 @@ export const releaseSrPayment = async (req, res) => {
         const sr = await User.findById(srId);
 
         if (!distributor || !sr) return res.status(404).json({ message: "Users not found" });
-        if (distributor.balance < amount) return res.status(400).json({ message: "Insufficient Balance." });
-
-        // Deduct from Distributor
-        distributor.balance -= amount;
-        await distributor.save();
 
         await new Transaction({
             userId: srId, amount: amount, type: 'SR_PAYOUT', status: 'SUCCESS',
-            remarks: `Payout by ${distributor.name} | A/C: ${accountNumber} | Bank TxID: ${txId}` // 🚀 FIXED
+            remarks: `Payout by ${distributor.name} | A/C: ${accountNumber} | Bank TxID: ${txId}`
         }).save();
-
 
         if (requestId) {
             await Transaction.findByIdAndUpdate(requestId, {
                 status: 'RELEASED',
-                remarks: `Approved with Bank TxID: ${txId}` // 🚀 FIXED: Links TxID to request
+                remarks: `Approved with Bank TxID: ${txId}`
             });
         }
 
-// 🚀 TRIGGER ACTIVITY LOG
+        // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             'PAYOUT_RELEASE',
@@ -506,8 +500,13 @@ export const releaseSrPayment = async (req, res) => {
             `Released SR Payout. Amount: ৳${amount} | Bank TxID: ${txId}`
         );
 
+        // 🚀 YOU MUST KEEP THIS SO THE FRONTEND KNOWS IT WORKED
         res.status(200).json({ success: true, message: "SR Payment Released", slip: { id: txId } });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
 };
 
 // 🚀 REJECT SR PAYOUT (REFUNDS SR WALLET)
