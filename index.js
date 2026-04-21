@@ -10,7 +10,6 @@ import { Server } from "socket.io";
 import bcrypt from "bcryptjs";
 
 // --- ROUTE IMPORTS ---
-// 🚀 FIXED: Pointed to the correct src folder and the consolidated auth.routes.js
 import authRoutes from './src/routes/auth.routes.js';
 import deviceRoutes from './src/routes/deviceRoutes.js';
 import settingsRoutes from './src/routes/settings.routes.js';
@@ -20,6 +19,9 @@ import marketingRoutes from './src/routes/marketing.routes.js';
 import locationRoutes from './src/routes/locationRoutes.js';
 import testRoutes from "./src/routes/test.routes.js";
 import User from "./src/models/User.js";
+
+// 🚀 RESTORED: This was missing and would cause a crash!
+import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
 
 dotenv.config();
 const app = express();
@@ -34,24 +36,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARES ---
+// Set security headers but allow cross-origin for APK downloads
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// 🚀 NATIVE CORS OVERRIDE - MUST BE FIRST
 app.use((req, res, next) => {
     const origin = req.headers.origin || '*';
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-    // Instantly kill the preflight request with a 200 OK and the headers
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
+    if (req.method === 'OPTIONS') return res.status(200).end();
     next();
 });
-
-app.use(helmet());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -59,16 +57,15 @@ app.use(morgan("dev"));
 
 app.set('io', io);
 
-// --- STATIC FILES & APK ---
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 🚀 TRIGGER AUTOMATED DUE LOCK CHECK EVERY 6 HOURS
+setInterval(() => {
+    runAutomatedDueCheck(io);
+}, 21600000);
 
-const publicPath = path.join(__dirname, '../public');
-app.use(express.static(publicPath));
-
-app.get('/app-release.apk', (req, res) => {
-    const apkPath = path.join(publicPath, 'app-release.apk');
-    res.download(apkPath, 'app-release.apk');
-});
+// --- STATIC FOLDERS ---
+// 🚀 FIXED: Simplified and pointing to your actual folders
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- DATABASE ---
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')
@@ -79,11 +76,9 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')
 const seedSuperAdmin = async () => {
     try {
         const adminExists = await User.findOne({ phone: "01711111111" });
-
         if (!adminExists) {
             console.log("⚠️ MASTER ADMIN MISSING: Generating Identity...");
             const hashedPassword = await bcrypt.hash("Raihan@!1611", 10);
-
             const superAdmin = new User({
                 name: "Master System Admin",
                 phone: "01711111111",
@@ -96,18 +91,11 @@ const seedSuperAdmin = async () => {
                     'LICENSE_FEE', 'PAYMENT_GATEWAY', 'QR_CODE', 'ACTIVITY_LOGS'
                 ]
             });
-
             await superAdmin.save();
             console.log("✅ MASTER IDENTITY ESTABLISHED.");
-        } else {
-            console.log("✅ TRVNX DB: Master Admin already exists, skipping seed.");
         }
-    } catch (error) {
-        console.error("❌ DB SEED ERROR:", error);
-    }
+    } catch (error) { console.error("❌ DB SEED ERROR:", error); }
 };
-
-// 🚀 FIXED: Added catch to clear the unhandled promise warning
 seedSuperAdmin().catch(err => console.error("Seed Warning:", err));
 
 // --- ROUTES ---
@@ -129,28 +117,19 @@ app.get('/', (req, res) => res.send('🚀 TRVNX API ONLINE'));
 // --- SOCKET.IO LOGIC ---
 io.on("connection", (socket) => {
     console.log("🌐 Client connected to Socket.io:", socket.id);
-
     socket.on("device_acknowledge", async (data) => {
         try {
             const { deviceId, command, status } = data;
             if (command === 'full_uninstall' && status === 'SUCCESS') {
-                // 🚀 FIXED: Pointed to src folder
                 const Device = (await import('./src/models/Device.js')).default;
                 await Device.findByIdAndUpdate(deviceId, { license_status: 'UNINSTALLED', is_locked: false });
-                console.log(`✅ [SOCKET] Device ${deviceId} acknowledged UNINSTALL. Marking Uninstalled.`);
                 io.emit("device_uninstalled_success", { deviceId });
             }
-        } catch (err) {
-            console.error("Socket Ack Error:", err);
-        }
+        } catch (err) { console.error("Socket Ack Error:", err); }
     });
-
-    socket.on("disconnect", () => {
-        console.log("❌ Client disconnected:", socket.id);
-    });
+    socket.on("disconnect", () => console.log("❌ Client disconnected:", socket.id));
 });
 
-// --- START SERVER ---
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, '0.0.0.0', () => {
     console.log("--------------------------------------------------");
