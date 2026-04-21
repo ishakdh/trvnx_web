@@ -44,6 +44,8 @@ setInterval(() => {
     runAutomatedDueCheck(io);
 }, 21600000);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 🚀 THIS FIXES THE APK DOWNLOAD LINK
+app.use(express.static(path.join(__dirname, 'public')));
 
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/trvnx_db')
     .then(() => console.log("✅ DATABASE: Connected Successfully"))
