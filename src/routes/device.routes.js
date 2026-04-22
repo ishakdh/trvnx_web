@@ -1,6 +1,4 @@
 import express from 'express';
-import { pushAppUpdate } from '../controllers/device.controller.js';
-import express from 'express';
 import {
     getShopDevices,
     registerDevice,

@@ -150,15 +150,15 @@ export const approveShop = async (req, res) => {
         shop.kyc_status = 'ACTIVE';
         await shop.save();
 
-        // 🚀 TRIGGER ACTIVITY LOG
+        // 🚀 TRIGGER ACTIVITY LOG (FIXED UNDEFINED VARIABLE CRASH)
         await logActivity(
             req.user,
-            `SHOP_APPROVAL_${action}`, // Ensure 'action' is defined in your real environment, or replace with hardcoded string
+            `SHOP_APPROVAL`,
             shop._id,
-            `${req.user?.role} executed ${action} on Shop: ${shop.name}`
+            `${req.user?.role || 'Admin'} approved Shop: ${shop.name}`
         );
 
-        res.status(200).json({ success: true, message: `Shop ${action}D successfully` });
+        res.status(200).json({ success: true, message: `Shop APPROVED successfully` });
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 

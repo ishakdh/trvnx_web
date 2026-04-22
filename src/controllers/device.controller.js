@@ -45,7 +45,6 @@ export const getShopDevices = async (req, res) => {
 };
 
 // 2. Register a new device
-// 2. Register a new device
 export const registerDevice = async (req, res) => {
     try {
         const payload = req.body;
@@ -92,7 +91,7 @@ export const activateAppLicense = async (req, res) => {
         // 1. We now catch 'is_sync' from the Mother App
         const { license_key, real_imei1, fcm_token, is_sync } = req.body;
 
-        // 🚀 THE SILENT HANDSHAKE (Add this block here!)
+        // 🚀 THE SILENT HANDSHAKE
         if (is_sync) {
             console.log(`🔄 Syncing Mother App Token for License: ${license_key}`);
 
@@ -147,7 +146,6 @@ export const activateAppLicense = async (req, res) => {
             // 2. 🚀 BULLETPROOF MATRIX SEARCH (Ignores Case & Spaces)
             let matrixFee = null;
             if (targets.length > 0) {
-                // Creates a flexible search query for every tag (e.g., searches for "dhaka" anywhere in the string, ignoring case)
                 const orQueries = targets.map(t => ({
                     target_markets: { $regex: new RegExp(t, 'i') }
                 }));
@@ -223,10 +221,8 @@ export const activateAppLicense = async (req, res) => {
 };
 
 // 4. Collect EMI Payment
-// 4. Collect EMI Payment
 export const collectEmi = async (req, res) => {
     try {
-        // 🚀 Added emiMonth to catch what the React frontend sends
         const { deviceId, amountPaid, emiMonth } = req.body;
         const device = await Device.findById(deviceId);
 
@@ -309,12 +305,14 @@ export const toggleDeviceLock = async (req, res) => {
         if (!device?.fcm_token) return res.status(400).json({ success: false, message: "Offline" });
 
         const commandToSend = action === 'BLOCK' ? "lock_device" : "unlock_device";
+
         await admin.messaging().send({
             token: device.fcm_token,
             data: {
-                command: commandToSend,
-                warning_message: action === 'BLOCK' ? reason : "Unlocked",
-                shop_phone: device.shopkeeper_id?.phone || "Support"
+                command: String(commandToSend),
+                // 🚀 FIXED: Guaranteed String fallback to prevent Firebase crashes
+                warning_message: action === 'BLOCK' ? String(reason || "Device Locked by Admin") : "Unlocked",
+                shop_phone: String(device.shopkeeper_id?.phone || "Support")
             },
             android: { priority: "high" }
         });
@@ -334,13 +332,8 @@ export const toggleDeviceLock = async (req, res) => {
         res.status(200).json({ success: true });
 
     } catch (error) {
-        // Convert the error object to a readable string
         const errorString = error.message || error.toString();
-
-        // Log it to the Coolify console
         console.error(`❌ Toggle Lock Error: ${errorString}`);
-
-        // Return it to the frontend so you can see it in your Network tab
         res.status(500).json({ success: false, error: errorString });
     }
 };
@@ -351,14 +344,21 @@ export const trackDevice = async (req, res) => {
         const { deviceId, reason } = req.body;
         const device = await Device.findById(deviceId);
 
-        // 🚀 FIXED: Send a real error message back to the frontend!
         if (!device?.fcm_token) {
             return res.status(400).json({ success: false, message: "Device is OFFLINE or has no active connection token." });
         }
 
-        await admin.messaging().send({ token: device.fcm_token, data: { command: "track_location", device_id: deviceId.toString(), reason: reason || "System Track" }, android: { priority: "high" } });
+        await admin.messaging().send({
+            token: device.fcm_token,
+            data: {
+                command: "track_location",
+                device_id: String(deviceId),
+                // 🚀 FIXED: Guaranteed string fallback
+                reason: String(reason || "System Track")
+            },
+            android: { priority: "high" }
+        });
 
-        // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             'TRACK_DEVICE',
@@ -369,7 +369,6 @@ export const trackDevice = async (req, res) => {
 
         res.status(200).json({ success: true, message: "Track command dispatched." });
     } catch (error) {
-        // 🚀 FIXED: Print the exact reason Firebase failed to the console and frontend!
         console.error("🔥 Firebase Track Error:", error);
         res.status(500).json({ success: false, message: `Firebase failed: ${error.message}` });
     }
@@ -418,18 +417,24 @@ export const uninstallDevice = async (req, res) => {
         if (!device.fcm_token) return res.status(400).json({ success: false, message: "Device offline or has no token" });
 
         // 🚀 1. Send via FCM (Background Wakeup)
-        await admin.messaging().send({ token: device.fcm_token, data: { command: "full_uninstall", device_id: deviceId.toString() }, android: { priority: "high" } });
+        await admin.messaging().send({
+            token: device.fcm_token,
+            data: {
+                command: "full_uninstall",
+                device_id: String(deviceId)
+            },
+            android: { priority: "high" }
+        });
 
         // 🚀 2. Send via Socket.io (Real-Time Active Connection Redundancy)
         const io = req.app.get('io');
         if (io) {
-            io.emit("device_command", { deviceId: deviceId.toString(), command: "full_uninstall" });
+            io.emit("device_command", { deviceId: String(deviceId), command: "full_uninstall" });
         }
 
         device.is_locked = false;
         await device.save();
 
-        // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             'FULL_UNINSTALL',
@@ -465,6 +470,7 @@ export const getAllDevices = async (req, res) => {
         res.status(200).json({ success: true, devices });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
+
 // 14. Push Silent App Update
 export const pushAppUpdate = async (req, res) => {
     try {
@@ -480,12 +486,12 @@ export const pushAppUpdate = async (req, res) => {
             token: device.fcm_token,
             data: {
                 command: "update_app",
-                url: apkUrl || "https://server.trvnx.com/downloads/trvnx-v2.apk"
+                // 🚀 FIXED: Changed from v2 to your correct v12 URL!
+                url: String(apkUrl || "https://server.trvnx.com/downloads/trvnx-v12.apk")
             },
             android: { priority: "high" }
         });
 
-        // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             'PUSH_UPDATE',
@@ -500,8 +506,8 @@ export const pushAppUpdate = async (req, res) => {
         res.status(500).json({ success: false, message: `Firebase failed: ${error.message}` });
     }
 };
+
 // 🚀 NEW: THE AUTOMATED LOCKING ENGINE
-// This function scans for overdue payments and locks devices ONLY if auto_lock is TRUE
 export const runAutomatedDueCheck = async (io) => {
     try {
         const now = new Date();
@@ -510,7 +516,7 @@ export const runAutomatedDueCheck = async (io) => {
         const overdueDevices = await Device.find({
             next_due_date: { $lt: now },
             is_locked: false,
-            auto_lock: true, // 👈 THIS IS YOUR NEW FILTER
+            auto_lock: true,
             license_status: 'ACTIVATED'
         }).populate('shopkeeper_id');
 
@@ -524,7 +530,8 @@ export const runAutomatedDueCheck = async (io) => {
                     data: {
                         command: "lock_device",
                         warning_message: "EMI Overdue: Please contact shop.",
-                        shop_phone: device.shopkeeper_id?.phone || "Support"
+                        // 🚀 FIXED: Ensure shop phone doesn't pass 'undefined' to FCM
+                        shop_phone: String(device.shopkeeper_id?.phone || "Support")
                     },
                     android: { priority: "high" }
                 });
