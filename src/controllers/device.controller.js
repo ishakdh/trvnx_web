@@ -487,7 +487,8 @@ export const pushAppUpdate = async (req, res) => {
             data: {
                 command: "update_app",
                 // 🚀 FIXED: Changed from v2 to your correct v12 URL!
-                url: String(apkUrl || "https://server.trvnx.com/downloads/trvnx-v12.apk")
+                // 🚀 FIXED: Pointing to the correct /update/ folder
+                url: String(apkUrl || "https://server.trvnx.com/update/trvnx-v12.apk")
             },
             android: { priority: "high" }
         });
