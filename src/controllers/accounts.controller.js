@@ -60,10 +60,11 @@ export const requestPayout = async (req, res) => {
 };
 // 🚀 NEW: The fix for the React Admin Panel (Manual Shop Recharge)
 export const adminShopRecharge = async (req, res) => {
-    const { shop_id, amount, method, remarks } = req.body;
+    // 1. Catch the exact variable names React is sending
+    const { shopId, amount, paymentMethod, otherDetails } = req.body;
 
     try {
-        const shop = await User.findById(shop_id);
+        const shop = await User.findById(shopId);
         if (!shop) {
             return res.status(404).json({ message: "Shop not found in database!" });
         }
@@ -75,8 +76,9 @@ export const adminShopRecharge = async (req, res) => {
             admin_id: req.user._id,
             type: 'RECHARGE',
             amount: Number(amount),
-            method: method,
-            remarks: remarks || "Manual Admin Recharge",
+            method: paymentMethod,
+            remarks: otherDetails || "Manual Admin Recharge",
+            // 🔥 FORCE exactly "SUCCESS" to bypass the Mongoose Enum crash
             status: 'SUCCESS'
         });
 
