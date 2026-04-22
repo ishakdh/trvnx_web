@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
 
 const transactionSchema = new mongoose.Schema({
-    userId: {
+    // 🚀 CHANGED: Match the snake_case used in your controllers
+    user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    // 🚀 NEW: Track which admin performed the recharge
+    admin_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     amount: { type: Number, required: true },
     type: {
@@ -27,15 +33,16 @@ const transactionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'PENDING_ADMIN', 'SUCCESS', 'RELEASED', 'REJECTED']
-    }, // 🚀 FIXED: Added the required comma here
+        // 🚀 THE FIX: Added 'COMPLETED' and 'SUCCESS' to the allowed list
+        enum: ['PENDING', 'PENDING_ADMIN', 'SUCCESS', 'RELEASED', 'REJECTED', 'COMPLETED'],
+        default: 'SUCCESS'
+    },
     remarks: { type: String },
-
     shop_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     description: { type: String },
     transaction_id: { type: String },
     gateway_type: { type: String },
-    payment_method: { type: String }
+    method: { type: String } // 🚀 CHANGED: Match 'method' from controller
 
 }, { timestamps: true });
 

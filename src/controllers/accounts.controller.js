@@ -58,17 +58,19 @@ export const requestPayout = async (req, res) => {
     await payoutRequest.save();
     res.json({ message: "Payout request sent to Accounts. Balance locked." });
 };
-// 🚀 NEW: The fix for the React Admin Panel (Manual Shop Recharge)
+// 🚀 THE FINAL FIX for the React Admin Panel (Manual Shop Recharge)
 export const adminShopRecharge = async (req, res) => {
-    // 1. Catch the exact variable names React is sending
+    // 1. Map the variable names exactly as they come from React
     const { shopId, amount, paymentMethod, otherDetails } = req.body;
 
     try {
+        // Use the mapped 'shopId'
         const shop = await User.findById(shopId);
         if (!shop) {
             return res.status(404).json({ message: "Shop not found in database!" });
         }
 
+        // Update balance
         shop.current_balance += Number(amount);
 
         const transaction = new Transaction({
@@ -77,8 +79,7 @@ export const adminShopRecharge = async (req, res) => {
             type: 'RECHARGE',
             amount: Number(amount),
             method: paymentMethod,
-            remarks: otherDetails || "Manual Admin Recharge",
-            // 🔥 FORCE exactly "SUCCESS" to bypass the Mongoose Enum crash
+            remarks: otherDetails,
             status: 'SUCCESS'
         });
 
@@ -86,6 +87,7 @@ export const adminShopRecharge = async (req, res) => {
         await transaction.save();
 
         res.json({
+            success: true,
             message: "Recharge successful!",
             new_balance: shop.current_balance
         });

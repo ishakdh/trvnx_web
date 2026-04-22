@@ -89,7 +89,28 @@ export const registerDevice = async (req, res) => {
 // 3. Activate License (🚀 STRICT & FLEXIBLE MATRIX MATCHING)
 export const activateAppLicense = async (req, res) => {
     try {
-        const { license_key, real_imei1, fcm_token } = req.body;
+        // 1. We now catch 'is_sync' from the Mother App
+        const { license_key, real_imei1, fcm_token, is_sync } = req.body;
+
+        // 🚀 THE SILENT HANDSHAKE (Add this block here!)
+        if (is_sync) {
+            console.log(`🔄 Syncing Mother App Token for License: ${license_key}`);
+
+            const updatedDevice = await Device.findOneAndUpdate(
+                { license_key: license_key },
+                { fcm_token: fcm_token, real_imei1: real_imei1, last_heartbeat: new Date() },
+                { new: true }
+            );
+
+            if (!updatedDevice) {
+                return res.status(404).json({ success: false, message: "Device not found for sync" });
+            }
+
+            // We stop the function here! No fees charged, no errors thrown.
+            return res.json({ success: true, message: "Token refreshed successfully" });
+        }
+
+        // 2. NORMAL ACTIVATION (The rest of your code stays below this)
         const device = await Device.findOne({ license_key: license_key }).populate('shopkeeper_id');
         if (!device) return res.status(404).json({ success: false, message: "License not found" });
 
