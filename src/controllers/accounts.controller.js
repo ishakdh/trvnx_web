@@ -64,7 +64,6 @@ export const adminShopRecharge = async (req, res) => {
     const { shopId, amount, paymentMethod, otherDetails } = req.body;
 
     try {
-        // Use the mapped 'shopId'
         const shop = await User.findById(shopId);
         if (!shop) {
             return res.status(404).json({ message: "Shop not found in database!" });
@@ -74,12 +73,13 @@ export const adminShopRecharge = async (req, res) => {
         shop.current_balance += Number(amount);
 
         const transaction = new Transaction({
-            user_id: shop._id,
-            admin_id: req.user._id,
+            // 🚀 FIXED: Using camelCase userId to match the schema!
+            userId: shop._id,
             type: 'RECHARGE',
             amount: Number(amount),
-            method: paymentMethod,
-            remarks: otherDetails,
+            // 🚀 FIXED: Matches the schema exactly
+            payment_method: paymentMethod || "Cash",
+            description: otherDetails || "Manual Admin Recharge",
             status: 'SUCCESS'
         });
 
