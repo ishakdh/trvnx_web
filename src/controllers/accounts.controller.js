@@ -58,3 +58,38 @@ export const requestPayout = async (req, res) => {
     await payoutRequest.save();
     res.json({ message: "Payout request sent to Accounts. Balance locked." });
 };
+// 🚀 NEW: The fix for the React Admin Panel (Manual Shop Recharge)
+export const adminShopRecharge = async (req, res) => {
+    const { shop_id, amount, method, remarks } = req.body;
+
+    try {
+        const shop = await User.findById(shop_id);
+        if (!shop) {
+            return res.status(404).json({ message: "Shop not found in database!" });
+        }
+
+        shop.current_balance += Number(amount);
+
+        const transaction = new Transaction({
+            user_id: shop._id,
+            admin_id: req.user._id,
+            type: 'RECHARGE',
+            amount: Number(amount),
+            method: method,
+            remarks: remarks || "Manual Admin Recharge",
+            status: 'SUCCESS'
+        });
+
+        await shop.save();
+        await transaction.save();
+
+        res.json({
+            message: "Recharge successful!",
+            new_balance: shop.current_balance
+        });
+
+    } catch (error) {
+        console.error("ADMIN RECHARGE CRASH:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
