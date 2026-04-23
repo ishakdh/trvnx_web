@@ -14,10 +14,12 @@ export const socketHandler = (io) => {
             console.log(`Device Registered: IMEI ${imei} is now ONLINE`);
         });
 
-        // Step 2: App sends heartbeat every 1 hour
-        socket.on("heartbeat", async (data) => {
-            const { imei } = data;
-            console.log(`Heartbeat received from IMEI: ${imei}`);
+        // Step 2: App sends heartbeat every 2 hours
+        socket.on("device_heartbeat", async (data) => {
+            const { device_id, status } = data;
+            const imei = device_id; // Maps the Android 'device_id' to your 'imei' logic
+
+            console.log(`Heartbeat received from IMEI: ${imei} | Status: ${status}`);
 
             await Sale.findOneAndUpdate(
                 { imei1: imei },
