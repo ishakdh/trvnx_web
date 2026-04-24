@@ -1,23 +1,29 @@
 import admin from 'firebase-admin';
-import fs from 'fs';
-import path from 'path';
+import dotenv from 'dotenv';
 
-// Use process.cwd() to reach the root folder from any file
-//const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
+dotenv.config();
 
 if (!admin.apps.length) {
-    if (process.env.FIREBASE_CREDENTIALS) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
-            console.log("✅ [FIREBASE LIB]: Initialized Successfully.");
-        } catch (err) {
-            console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
+    try {
+        const b64Json = process.env.FIREBASE_B64_JSON;
+
+        if (!b64Json) {
+            throw new Error("Missing FIREBASE_B64_JSON in Coolify Environment.");
         }
-    } else {
-        console.error("❌ [FIREBASE LIB]: serviceAccountKey.json NOT FOUND at " );
+
+        // Decode the Base64 string back to the raw JSON text
+        const decodedJson = Buffer.from(b64Json, 'base64').toString('utf8');
+        
+        // Parse it natively
+        const serviceAccount = JSON.parse(decodedJson);
+
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        
+        console.log("✅ [FIREBASE LIB]: Securely Initialized via Base64 JSON!");
+    } catch (err) {
+        console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
     }
 }
 
