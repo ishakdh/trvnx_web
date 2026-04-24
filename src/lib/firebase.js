@@ -1,27 +1,30 @@
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-    if (process.env.FIREBASE_CREDENTIALS) {
+    // Check for the 3 new variables we added to Coolify
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (projectId && clientEmail && privateKey) {
         try {
-            // 1. Grab the Base64 string from the environment variable
-            const base64Credentials = process.env.FIREBASE_CREDENTIALS;
+            // Fix Coolify's newline escaping
+            privateKey = privateKey.replace(/\\n/g, '\n');
 
-            // 2. Decode it back into a normal text string
-            const decodedString = Buffer.from(base64Credentials, 'base64').toString('utf8');
-
-            // 3. Parse the clean string into a JSON object
-            const serviceAccount = JSON.parse(decodedString);
-
-            // 4. Initialize Firebase
             admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
+                credential: admin.credential.cert({
+                    projectId,
+                    clientEmail,
+                    privateKey
+                })
             });
-            console.log("✅ [FIREBASE LIB]: Initialized Successfully.");
+            console.log("✅ [FIREBASE LIB]: Initialized Successfully using 3-variable method.");
         } catch (err) {
             console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
         }
     } else {
-        console.error("❌ [FIREBASE LIB]: FIREBASE_CREDENTIALS environment variable NOT FOUND.");
+        // This is the error you were seeing in the logs!
+        console.error("❌ [FIREBASE LIB]: New Firebase variables (ID, Email, or Key) NOT FOUND in Environment.");
     }
 }
 
