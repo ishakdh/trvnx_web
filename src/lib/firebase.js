@@ -5,20 +5,23 @@ dotenv.config();
 
 if (!admin.apps.length) {
     try {
-        const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+        const b64Json = process.env.FIREBASE_B64_JSON;
 
-        if (!serviceAccountString) {
-            throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_JSON in Coolify Environment.");
+        if (!b64Json) {
+            throw new Error("Missing FIREBASE_B64_JSON in Coolify.");
         }
 
-        // Let Node.js natively parse the JSON. This perfectly handles the private key formatting.
-        const serviceAccount = JSON.parse(serviceAccountString);
+        // Decode the Base64 string back to the raw JSON text
+        const decodedJson = Buffer.from(b64Json, 'base64').toString('utf8');
+        
+        // Parse it natively
+        const serviceAccount = JSON.parse(decodedJson);
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
-
-        console.log("✅ [FIREBASE LIB]: Firebase Initialized Successfully with JSON Object!");
+        
+        console.log("✅ [FIREBASE LIB]: Securely Initialized via Base64 JSON!");
     } catch (err) {
         console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
     }
