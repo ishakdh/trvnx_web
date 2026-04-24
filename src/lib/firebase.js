@@ -9,7 +9,7 @@ if (!admin.apps.length) {
     if (projectId && clientEmail && privateKey) {
         try {
             // Fix Coolify's newline escaping
-            privateKey = privateKey.replace(/\\n/g, '\n');
+            privateKey = privateKey.replace(/\\n/g, '\n').replace(/\n/g, '\n');
 
             admin.initializeApp({
                 credential: admin.credential.cert({
