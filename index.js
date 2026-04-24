@@ -8,7 +8,6 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import bcrypt from "bcryptjs";
-import admin from "firebase-admin";
 
 // --- ROUTE IMPORTS ---
 import authRoutes from './src/routes/auth.routes.js';
@@ -25,32 +24,7 @@ import User from "./src/models/User.js";
 import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
 
 dotenv.config();
-// --- FIREBASE INITIALIZATION BLOCK ---
-try {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    if (!projectId || !clientEmail || !privateKey) {
-        throw new Error("Missing one or more Firebase Environment Variables in Coolify!");
-    }
-
-    // Fix Coolify escaping newlines
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: projectId,
-            clientEmail: clientEmail,
-            privateKey: privateKey
-        })
-    });
-
-    console.log("✅ Firebase Admin Initialized Successfully!");
-
-} catch (error) {
-    console.error("❌ FIREBASE INIT FAILED:", error.message);
-}
 const app = express();
 const httpServer = createServer(app);
 
