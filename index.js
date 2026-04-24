@@ -25,26 +25,31 @@ import User from "./src/models/User.js";
 import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
 
 dotenv.config();
-// 👇 STEP 2: ADD THIS ENTIRE BLOCK 👇
 // --- FIREBASE INITIALIZATION BLOCK ---
 try {
-    const rawCredentials = process.env.FIREBASE_CREDENTIALS;
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    if (!rawCredentials) {
-        console.warn("⚠️ FIREBASE_CREDENTIALS variable is empty or missing in Coolify!");
-    } else {
-        // Parse the string from Coolify back into a JSON object
-        const serviceAccount = JSON.parse(rawCredentials);
-
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-
-        console.log("✅ Firebase Admin Initialized Successfully!");
+    if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Missing one or more Firebase Environment Variables in Coolify!");
     }
+
+    // Fix Coolify escaping newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: projectId,
+            clientEmail: clientEmail,
+            privateKey: privateKey
+        })
+    });
+
+    console.log("✅ Firebase Admin Initialized Successfully!");
+
 } catch (error) {
     console.error("❌ FIREBASE INIT FAILED:", error.message);
-    console.error("Check your Coolify Dashboard. Ensure the JSON is valid and 'Is Multiline' is checked.");
 }
 const app = express();
 const httpServer = createServer(app);
