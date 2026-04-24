@@ -1,30 +1,28 @@
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-    // Check for the 3 new variables we added to Coolify
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const privateKeyB64 = process.env.FIREBASE_PRIVATE_KEY_B64; // Use the B64 version
 
-    if (projectId && clientEmail && privateKey) {
+    if (projectId && clientEmail && privateKeyB64) {
         try {
-            // Fix Coolify's newline escaping
-            privateKey = privateKey.replace(/\\n/g, '\n').replace(/\n/g, '\n');
+            // Decode the Base64 string back to the real PEM key
+            const privateKey = Buffer.from(privateKeyB64, 'base64').toString('utf8');
 
             admin.initializeApp({
                 credential: admin.credential.cert({
                     projectId,
                     clientEmail,
-                    privateKey
+                    privateKey: privateKey.replace(/\\n/g, '\n')
                 })
             });
-            console.log("✅ [FIREBASE LIB]: Initialized Successfully using 3-variable method.");
+            console.log("✅ [FIREBASE LIB]: Initialized Successfully via Base64!");
         } catch (err) {
             console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
         }
     } else {
-        // This is the error you were seeing in the logs!
-        console.error("❌ [FIREBASE LIB]: New Firebase variables (ID, Email, or Key) NOT FOUND in Environment.");
+        console.error("❌ [FIREBASE LIB]: Missing B64 variables in Environment.");
     }
 }
 
