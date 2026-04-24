@@ -4,31 +4,40 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKeyB64 = process.env.FIREBASE_PRIVATE_KEY_B64;
+    try {
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
-    if (projectId && clientEmail && privateKeyB64) {
-        try {
-            // 1. Decode the Base64 string back to standard text
-            let decodedKey = Buffer.from(privateKeyB64, 'base64').toString('utf8');
+        // Grab whichever variable you currently have saved in Coolify
+        let rawKey = process.env.FIREBASE_PRIVATE_KEY_B64 || process.env.FIREBASE_PRIVATE_KEY;
 
-            // 2. Aggressively fix any formatting, newlines, or hidden quotes
-            decodedKey = decodedKey.replace(/\\n/g, '\n').replace(/"/g, '').trim();
-
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: projectId,
-                    clientEmail: clientEmail,
-                    privateKey: decodedKey
-                })
-            });
-            console.log("✅ [FIREBASE LIB]: Initialized Successfully via Base64!");
-        } catch (err) {
-            console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
+        if (!projectId || !clientEmail || !rawKey) {
+            throw new Error("Missing Firebase Variables in Coolify.");
         }
-    } else {
-        console.error("❌ [FIREBASE LIB]: Missing B64 variables in Environment.");
+
+        // 1. If the key is Base64 (doesn't start with '-----BEGIN'), decode it first
+        if (!rawKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            rawKey = Buffer.from(rawKey, 'base64').toString('utf8');
+        }
+
+        // 2. Aggressively strip Coolify's hidden garbage and fix line breaks
+        const cleanKey = rawKey
+            .replace(/\\n/g, '\n') // Fix literal string \n
+            .replace(/\\r/g, '\r') // Fix Windows carriage returns
+            .replace(/"/g, '')     // Remove hidden quotes Coolify adds
+            .trim();               // Remove extra spaces at the start/end
+
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: projectId,
+                clientEmail: clientEmail,
+                privateKey: cleanKey
+            })
+        });
+
+        console.log("✅ [FIREBASE LIB]: Firebase Initialized Successfully!");
+    } catch (err) {
+        console.error("❌ [FIREBASE LIB]: Initialization Error:", err.message);
     }
 }
 
