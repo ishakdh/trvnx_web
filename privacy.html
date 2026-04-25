@@ -7,11 +7,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
-        body { background-color: #030712; color: #cbd5e1; line-height: 1.8; padding: 4rem 10%; }
+        body { background-color: #030712; color: #cbd5e1; line-height: 1.8; padding: 2rem 10% 4rem; }
 
-        .header { margin-bottom: 4rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2rem; }
-        h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; }
-        .accent { color: #3b82f6; }
+        /* Clickable Brand Header */
+        .brand-header {
+            text-align: center;
+            margin-bottom: 4rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            transition: 0.3s;
+        }
+        .brand-header:hover { opacity: 0.8; transform: translateY(-2px); }
+
+        .brand-name { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 5px; }
+        .brand-bold { color: #3b82f6; font-weight: 800; font-size: 2rem; text-transform: uppercase; }
+        .brand-light { color: #94a3b8; font-weight: 400; font-size: 1.4rem; }
+        .back-hint { color: #475569; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
+
+        .header { margin-bottom: 4rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2rem; text-align: center; }
+        h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: -1px; }
 
         .notice-box {
             background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6;
@@ -25,54 +40,50 @@
         ul { margin-left: 2rem; margin-bottom: 1.5rem; }
         li { margin-bottom: 0.5rem; }
 
-        .footer { margin-top: 5rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; }
+        .footer { margin-top: 5rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; text-align: center; color: #475569; }
     </style>
 </head>
 <body>
 
+<a href="index.html" class="brand-header">
+    <div class="brand-name">
+        <span class="brand-bold">LINDUX</span>
+        <span class="brand-light">Soft Tech</span>
+    </div>
+</a>
+
 <div class="header">
-    <h1>Privacy Policy & <span class="accent">B2B Usage Agreement</span></h1>
+    <h1>Privacy Policy</h1>
     <p>Effective Date: April 2026 | Lindux Enterprise Ecosystem</p>
 </div>
 
 <div class="notice-box">
     <h4>Google Play Protect Compliance Notice:</h4>
-    <p>The application "Lindux Staff Pro" (com.lindux.staffpro) is a proprietary B2B Enterprise Mobility Management (EMM) tool. It is intentionally excluded from the public Google Play Store as it requires **Device Owner provisioning** via QR code to secure organizational hardware assets against unauthorized use and policy violations.</p>
+    <p>The application "Lindux Staff Pro" (com.lindux.staffpro) is a proprietary B2B Enterprise Mobility Management (EMM) tool. It is intentionally excluded from the public Google Play Store as it requires **Device Owner provisioning** via QR code to secure organizational hardware assets against unauthorized use.</p>
 </div>
 
 <section>
     <h2>1. Purpose of the Application</h2>
-    <p>Lindux Staff Pro is a specialized device security and management application built exclusively for corporate clients and organizations. Its primary function is to secure and manage hardware assets deployed under organizational usage agreements. By establishing Device Owner privileges during factory provisioning, the software ensures that the physical asset remains secured and compliant with corporate security policies throughout its operational lifecycle.</p>
+    <p>Lindux Staff Pro is a specialized device security and management application built exclusively for corporate clients. Its primary function is to secure hardware assets deployed under organizational usage agreements. By establishing Device Owner privileges, the software ensures physical asset integrity throughout its operational lifecycle.</p>
 </section>
 
 <section>
-    <h2>2. Required Permissions & Device Administrator</h2>
-    <p>To function as an organizational security tool, Lindux Staff Pro strictly requires <strong>BIND_DEVICE_ADMIN</strong> (Device Owner) privileges. This allows the application to legitimately execute the following security protocols:</p>
+    <h2>2. Required Permissions</h2>
+    <p>To function as an organizational security tool, the application requires <strong>BIND_DEVICE_ADMIN</strong> (Device Owner) privileges to execute the following protocols:</p>
     <ul>
-        <li>Restrict access to the device UI (Lock Screen) in the event of a security breach or reported asset loss.</li>
-        <li>Disable Safe Mode and Factory Resets to prevent unauthorized circumvention of the organizational security lock.</li>
-        <li>Prevent application uninstallation by unauthorized users to maintain persistent management.</li>
+        <li>Restrict access to the device UI in the event of a security breach.</li>
+        <li>Disable Safe Mode and Factory Resets to prevent unauthorized circumvention.</li>
+        <li>Prevent application uninstallation by unauthorized users.</li>
     </ul>
 </section>
 
 <section>
-    <h2>3. Data Collection and Telemetry</h2>
-    <p>Lindux operates under strict data minimization principles. <strong>We do NOT collect personal browsing history, SMS messages, user photos, or personal contacts.</strong></p>
-    <p>The application only collects and transmits the following hardware telemetry to our secure servers to maintain the integrity of the device management state:</p>
-    <ul>
-        <li><strong>Hardware Identifiers (Android ID):</strong> To verify the specific device under management.</li>
-        <li><strong>Network Status:</strong> To ensure the device remains connected to the organizational management server.</li>
-        <li><strong>Security State:</strong> Heartbeat pings to verify the software has not been tampered with and that security locks are active.</li>
-    </ul>
-</section>
-
-<section>
-    <h2>4. Data Retention and Asset Release</h2>
-    <p>Once the asset lifecycle or service agreement is completed, the organization initiates a permanent unlock command from the server. The Lindux Staff Pro application then removes its own Device Owner privileges and initiates a full self-uninstallation protocol, returning the device to standard consumer functionality. All associated telemetry for that specific hardware ID is permanently purged from our active operational databases.</p>
+    <h2>3. Data Collection</h2>
+    <p><strong>We do NOT collect personal browsing history, SMS messages, user photos, or personal contacts.</strong> The application only transmits hardware telemetry (Android ID, Network Status, and Security State) to maintain management integrity.</p>
 </section>
 
 <div class="footer">
-    <p>&copy; 2026 Lindux Soft Tech | Dhaka HQ, Bangladesh</p>
+    <p>&copy; 2026 LINDUX SOFT TECH | DHAKA HQ, BANGLADESH</p>
     <p>Contact: contact@trvnx.com</p>
 </div>
 
