@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import express from "express";
 import mongoose from "mongoose";
 import morgan from "morgan";
@@ -150,6 +149,4 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log("--------------------------------------------------");
 });
-=======
-console.log('Happy developing ✨')
->>>>>>> 866dc06778a2061d13a26d863dd79eb81a2d9641
+
