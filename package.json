@@ -1,12 +1,12 @@
 {
-<<<<<<< HEAD
-  "name": "rrapp_backend",
+  "name": "trvnx_web",
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -29,19 +29,9 @@
   "description": "TRVNX Backend Server",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/applandsys/rrapp_backend.git"
+    "url": "https://github.com/ishakdh/trvnx_web.git"
   },
   "author": "",
-  "license": "ISC"
-}
-=======
-  "name": "web_lindux",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "license": "ISC",
   "private": true
 }
->>>>>>> 866dc06778a2061d13a26d863dd79eb81a2d9641
