@@ -118,6 +118,17 @@ app.get('/', (req, res) => res.send('🚀 TRVNX API ONLINE'));
 // --- SOCKET.IO LOGIC ---
 io.on("connection", (socket) => {
     console.log("🌐 Client connected to Socket.io:", socket.id);
+
+    // 🚀 NEW: Catch the heartbeat from the Android App
+    socket.on("device_heartbeat", (data) => {
+        if (data && data.device_id) {
+            // Put this socket connection into a specific room named after the device ID
+            socket.join(data.device_id);
+            // Optional: You can log this to verify phones are connecting
+            // console.log(`📱 Device ${data.device_id} is online and ready for commands.`);
+        }
+    });
+
     socket.on("device_acknowledge", async (data) => {
         try {
             const { deviceId, command, status } = data;
@@ -128,6 +139,7 @@ io.on("connection", (socket) => {
             }
         } catch (err) { console.error("Socket Ack Error:", err); }
     });
+
     socket.on("disconnect", () => console.log("❌ Client disconnected:", socket.id));
 });
 
