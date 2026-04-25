@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "rrapp_backend",
   "version": "1.0.0",
   "type": "module",
@@ -33,3 +34,14 @@
   "author": "",
   "license": "ISC"
 }
+=======
+  "name": "web_lindux",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true
+}
+>>>>>>> 866dc06778a2061d13a26d863dd79eb81a2d9641

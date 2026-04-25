@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%233b82f6'/><stop offset='100%' stop-color='%231d4ed8'/></linearGradient></defs><path d='M50 5 L92 22 V65 Q50 95 8 65 V22 Z' fill='url(%23g)'/><path d='M36 34 V66 H64' stroke='white' stroke-width='12' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: #030712; color: #cbd5e1; line-height: 1.8; padding: 2rem 10% 4rem; }
+
+        /* Clickable Brand Header */
+        .brand-header {
+            text-align: center;
+            margin-bottom: 4rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            transition: 0.3s;
+        }
+        .brand-header:hover { opacity: 0.8; transform: translateY(-2px); }
+
+        .brand-name { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 5px; }
+        .brand-bold { color: #3b82f6; font-weight: 800; font-size: 2rem; text-transform: uppercase; }
+        .brand-light { color: #94a3b8; font-weight: 400; font-size: 1.4rem; }
+        .back-hint { color: #475569; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
+
+        .header { margin-bottom: 4rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2rem; text-align: center; }
+        h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: -1px; }
+
+        .notice-box {
+            background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6;
+            padding: 2rem; margin-bottom: 3rem; border-radius: 4px;
+        }
+        .notice-box h4 { color: #fff; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        section { margin-bottom: 3rem; }
+        h2 { color: #fff; font-size: 1.5rem; margin-bottom: 1.5rem; border-left: 3px solid #3b82f6; padding-left: 1rem; }
+        p { margin-bottom: 1rem; font-size: 1.1rem; }
+        ul { margin-left: 2rem; margin-bottom: 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+
+        .footer { margin-top: 5rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; text-align: center; color: #475569; }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="brand-header">
+    <div class="brand-name">
+        <span class="brand-bold">LINDUX</span>
+        <span class="brand-light">Soft Tech</span>
+    </div>
+</a>
+
+<div class="header">
+    <h1>Privacy Policy</h1>
+    <p>Effective Date: April 2026 | Lindux Enterprise Ecosystem</p>
+</div>
+
+<div class="notice-box">
+    <h4>Google Play Protect Compliance Notice:</h4>
+    <p>The application "Lindux Staff Pro" (com.lindux.staffpro) is a proprietary B2B Enterprise Mobility Management (EMM) tool. It is intentionally excluded from the public Google Play Store as it requires **Device Owner provisioning** via QR code to secure organizational hardware assets against unauthorized use.</p>
+</div>
+
+<section>
+    <h2>1. Purpose of the Application</h2>
+    <p>Lindux Staff Pro is a specialized device security and management application built exclusively for corporate clients. Its primary function is to secure hardware assets deployed under organizational usage agreements. By establishing Device Owner privileges, the software ensures physical asset integrity throughout its operational lifecycle.</p>
+</section>
+
+<section>
+    <h2>2. Required Permissions</h2>
+    <p>To function as an organizational security tool, the application requires <strong>BIND_DEVICE_ADMIN</strong> (Device Owner) privileges to execute the following protocols:</p>
+    <ul>
+        <li>Restrict access to the device UI in the event of a security breach.</li>
+        <li>Disable Safe Mode and Factory Resets to prevent unauthorized circumvention.</li>
+        <li>Prevent application uninstallation by unauthorized users.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>3. Data Collection</h2>
+    <p><strong>We do NOT collect personal browsing history, SMS messages, user photos, or personal contacts.</strong> The application only transmits hardware telemetry (Android ID, Network Status, and Security State) to maintain management integrity.</p>
+</section>
+
+<div class="footer">
+    <p>&copy; 2026 LINDUX SOFT TECH | DHAKA HQ, BANGLADESH</p>
+    <p>Contact: contact@trvnx.com</p>
+</div>
+
+</body>
+</html>

@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/.idea/rrapp_backend.iml" filepath="$PROJECT_DIR$/.idea/rrapp_backend.iml" />
+=======
+      <module fileurl="file://$PROJECT_DIR$/.idea/web_lindux.iml" filepath="$PROJECT_DIR$/.idea/web_lindux.iml" />
+>>>>>>> 866dc06778a2061d13a26d863dd79eb81a2d9641
     </modules>
   </component>
 </project>
