@@ -44,4 +44,7 @@ router.post('/sr-request-payout', protect, requestSrPayout);
 router.post('/release-sr-payment', protect, releaseSrPayment);
 router.post('/reject-sr-payment', protect, rejectSrPayment);
 
+// 🚀 FMS RROUTES
+router.post('/submit-mfs', protect, createDeposit);
+
 export default router;
