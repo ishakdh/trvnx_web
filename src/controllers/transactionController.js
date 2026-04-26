@@ -177,6 +177,29 @@ export const createDeposit = async (req, res) => {
     }
 };
 
+export const approveShopkeeper = async (req, res) => {
+    try {
+        const { transactionId } = req.body;
+        const tx = await Transaction.findById(transactionId);
+        if (!tx) return res.status(404).json({ message: "Transaction not found" });
+
+        const shop = await User.findById(tx.userId);
+        if (!shop) return res.status(404).json({ message: "Shopkeeper not found" });
+
+        // Logic to activate the shopkeeper
+        shop.status = 'ACTIVE';
+        await shop.save();
+
+        tx.status = 'SUCCESS';
+        tx.remarks = "Approved by Admin";
+        await tx.save();
+
+        res.status(200).json({ success: true, message: "Shopkeeper approved successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export const approveDeposit = async (req, res) => {
     try {
         const { transactionId, customLicenseFee } = req.body;
