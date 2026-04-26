@@ -361,44 +361,69 @@ export const updateSettings = async (req, res) => {
 
 export const syncIncomingSms = async (req, res) => {
     try {
-        const { txid, amount, secret_key } = req.body;
+        // 1. Accept the RAW SMS text from the Android App
+        const { sender, messageBody, secret_key } = req.body;
+
         const config = await Settings.findOne({ config_name: "GLOBAL_CONFIG" });
         if (!config || secret_key !== config.sms_bridge_secret) return res.status(403).json({ error: "UNAUTHORIZED" });
-        await new SmsLog({ txid, amount: Number(amount) }).save();
-        res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ error: "DUPLICATE_OR_SYNC_FAILED" }); }
-};
 
-export const approveShopkeeper = async (req, res) => {
-    try {
-        const { shopId, action } = req.body; // action will be 'APPROVE' or 'REJECT'
-        const userRole = req.user?.role; // Identifies if it is DISTRIBUTOR or ADMIN
+        // 2. Ignore spam or personal texts; only process MFS
+        if (!sender.toLowerCase().includes('bkash') && !sender.toLowerCase().includes('nagad')) {
+            return res.status(200).json({ message: "Ignored: Not MFS" });
+        }
 
-        const shop = await User.findById(shopId);
-        if (!shop) return res.status(404).json({ message: "Shop not found" });
+        // 3. THE SMART SERVER: Extract TxID and Amount using Regex
+        const trxIdMatch = messageBody.match(/TrxID[:\s]*([A-Z0-9]+)/i);
+        const amountMatch = messageBody.match(/Tk[:\s]*([\d,.]+)/i);
 
-        if (action === 'REJECT') {
-            shop.approval.status = 'REJECTED';
-            shop.status = 'LOCKED';
-        } else if (action === 'APPROVE') {
-            if (userRole === 'DISTRIBUTOR') {
-                shop.approval.status = 'WAITING_ADMIN'; // Send up the chain to Admin
-            } else if (['SUPER_ADMIN', 'ADMIN'].includes(userRole)) {
-                shop.approval.status = 'APPROVED'; // Final Approval
+        if (!trxIdMatch || !amountMatch) {
+            return res.status(200).json({ message: "Ignored: Could not find TxID or Amount" });
+        }
+
+        const txid = trxIdMatch[1].toUpperCase();
+        const amount = Number(amountMatch[1].replace(/,/g, ''));
+
+        // 4. Save to your existing SMS Log
+        const newSms = await new SmsLog({ txid, amount, is_claimed: false }).save();
+        console.log(`📥 NEW SMS LOGGED -> TxID: ${txid} | Amount: ৳${amount}`);
+
+        // 5. THE MAGIC FIX: Check if a user ALREADY submitted this TxID as PENDING
+        const pendingTx = await Transaction.findOne({ txid, status: { $in: ['PENDING', 'PENDING_ADMIN'] } });
+
+        if (pendingTx && pendingTx.amount === amount) {
+
+            // Mark SMS as claimed
+            newSms.is_claimed = true;
+            await newSms.save();
+
+            // Add money to the shopkeeper's balance
+            const shop = await User.findById(pendingTx.userId);
+            if (shop) {
+                shop.balance += amount;
                 shop.status = 'ACTIVE';
+                await shop.save();
+
+                // Auto-Approve the Transaction
+                pendingTx.status = 'SUCCESS';
+                pendingTx.remarks = "Auto-matched via Background SMS App";
+                await pendingTx.save();
+
+                // Trigger Commission Engine if necessary
+                if (amount >= 1000) {
+                    await calculateHierarchyCommissions(shop, 'ID_GEN');
+                    await updateMarketingTargets(shop._id, amount);
+                }
+
+                console.log(`🚀 INSTANT AUTO-APPROVE: ${txid} matched successfully!`);
             }
         }
 
-        await logActivity(
-            req.user,
-            'SHOPKEEPER_APPROVAL_'+action,
-            null,
-            `Shopkeeper approval is ${action}`
-        );
-
-        await shop.save();
-        res.status(200).json({ success: true, message: `Shop ${action}D successfully` });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+        res.status(200).json({ success: true, txid, amount });
+    } catch (error) {
+        console.error("SMS Sync Error:", error);
+        // Change from 500 to 200 so the Android app doesn't crash on duplicate TxIDs
+        res.status(200).json({ error: "DUPLICATE_OR_SYNC_FAILED" });
+    }
 };
 
 // 🚀 SR COMMISSIONS ROUTER (Upgraded with Mirror Mode Support)
