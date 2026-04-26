@@ -52,7 +52,6 @@ export const registerDevice = async (req, res) => {
         const photoPath = req.files && req.files['customer_photo'] ? req.files['customer_photo'][0].path : null;
         const nidPath = req.files && req.files['nid_card'] ? req.files['nid_card'][0].path : null;
 
-        // 🚀 Ensure these are parsed as clean Numbers
         const months = Number(payload.installment_months) || 1;
         const tp = Number(payload.total_price) || 0;
         const dp = Number(payload.down_payment) || 0;
@@ -66,11 +65,11 @@ export const registerDevice = async (req, res) => {
         const newDevice = new Device({
             ...payload,
             auto_lock: payload.auto_lock !== undefined ? payload.auto_lock : true,
-            total_price: tp,             // 🚀 Force Number
-            down_payment: dp,            // 🚀 Force Number
-            installment_months: months,  // 🚀 Explicitly save the correct number
-            monthly_emi: calculatedEmi,  // 🚀 Explicitly save the calculated EMI
-            paid_so_far: dp,             // 🚀 Down payment IS what is paid so far
+            total_price: tp,
+            down_payment: dp,
+            installment_months: months,
+            monthly_emi: calculatedEmi,
+            paid_so_far: dp,
             license_key: licenseKey,
             offline_otps: offlineOtps,
             customer_photo: photoPath,
@@ -85,16 +84,13 @@ export const registerDevice = async (req, res) => {
     }
 };
 
-// 3. Activate License (🚀 STRICT & FLEXIBLE MATRIX MATCHING)
+// 3. Activate License
 export const activateAppLicense = async (req, res) => {
     try {
-        // 1. We now catch 'is_sync' from the Mother App
         const { license_key, real_imei1, fcm_token, is_sync } = req.body;
 
-        // 🚀 THE SILENT HANDSHAKE
         if (is_sync) {
             console.log(`🔄 Syncing Mother App Token for License: ${license_key}`);
-
             const updatedDevice = await Device.findOneAndUpdate(
                 { license_key: license_key },
                 { fcm_token: fcm_token, real_imei1: real_imei1, last_heartbeat: new Date() },
@@ -104,12 +100,9 @@ export const activateAppLicense = async (req, res) => {
             if (!updatedDevice) {
                 return res.status(404).json({ success: false, message: "Device not found for sync" });
             }
-
-            // We stop the function here! No fees charged, no errors thrown.
             return res.json({ success: true, message: "Token refreshed successfully" });
         }
 
-        // 2. NORMAL ACTIVATION (The rest of your code stays below this)
         const device = await Device.findOne({ license_key: license_key }).populate('shopkeeper_id');
         if (!device) return res.status(404).json({ success: false, message: "License not found" });
 
@@ -118,7 +111,6 @@ export const activateAppLicense = async (req, res) => {
             const shop = await User.findById(device.shopkeeper_id);
             if (!shop) return res.status(404).json({ success: false, message: "Shopkeeper not found" });
 
-            // 1. Gather all possible target tags
             const targets = [];
             if (shop.address?.district) {
                 targets.push(shop.address.district.trim());
@@ -143,7 +135,6 @@ export const activateAppLicense = async (req, res) => {
                 }
             }
 
-            // 2. 🚀 BULLETPROOF MATRIX SEARCH (Ignores Case & Spaces)
             let matrixFee = null;
             if (targets.length > 0) {
                 const orQueries = targets.map(t => ({
@@ -156,7 +147,6 @@ export const activateAppLicense = async (req, res) => {
                 }).sort({ createdAt: -1 });
             }
 
-            // 3. If no custom rule matches this shop, BLOCK the activation
             if (!matrixFee) {
                 console.log(`❌ Activation Blocked: No Matrix Fee found for Shop ${shop.name} in ${shop.address?.district}`);
                 return res.status(403).json({
@@ -167,7 +157,6 @@ export const activateAppLicense = async (req, res) => {
 
             let fee = matrixFee.fee_amount;
 
-            // 4. Proceed with deduction
             if (shop.balance < fee) return res.status(402).json({ success: false, message: `Shop balance low (Need: ৳${fee})` });
 
             shop.balance -= fee;
@@ -184,9 +173,8 @@ export const activateAppLicense = async (req, res) => {
             }).save();
 
             device.license_status = 'ACTIVATED';
-            // 🚀 TRIGGER ACTIVITY LOG FOR SALES GENERATE
             await logActivity(
-                shop, // The shopkeeper making the sale
+                shop,
                 'SALE_GENERATE',
                 device._id,
                 `Activated License for ${device.customer_name}. Fee Deducted: ৳${fee}`,
@@ -234,7 +222,6 @@ export const collectEmi = async (req, res) => {
 
         device.paid_so_far += received;
 
-        // 🚀 Track exactly which month they paid for in the logs
         device.payment_history.push({
             date: new Date(),
             amount: received,
@@ -247,9 +234,15 @@ export const collectEmi = async (req, res) => {
             device.next_due_date = nextDue;
         }
 
-        // 🚀 THE FIX: AUTOMATICALLY UNLOCK THE PHONE IF IT WAS LOCKED
         if (device.is_locked) {
             device.is_locked = false;
+
+            // 🚀 REAL-TIME SOCKET UNLOCK
+            const io = req.app.get('io');
+            if (io) {
+                io.to(device.imei).emit(`COMMAND_${device.imei}`, { command: "UNLOCK" });
+            }
+
             if (device.fcm_token) {
                 await admin.messaging().send({
                     token: device.fcm_token,
@@ -277,13 +270,19 @@ export const extendDueDate = async (req, res) => {
 
         if (device.is_locked) {
             device.is_locked = false;
+
+            // 🚀 REAL-TIME SOCKET UNLOCK
+            const io = req.app.get('io');
+            if (io) {
+                io.to(device.imei).emit(`COMMAND_${device.imei}`, { command: "UNLOCK" });
+            }
+
             if (device.fcm_token) {
                 await admin.messaging().send({ token: device.fcm_token, data: { command: "unlock_device" }, android: { priority: "high" } });
             }
         }
         await device.save();
 
-        // 🚀 TRIGGER ACTIVITY LOG FOR EMI EXTENSION
         await logActivity(
             req.user,
             'EMI_EXTENSION',
@@ -304,13 +303,23 @@ export const toggleDeviceLock = async (req, res) => {
 
         if (!device?.fcm_token) return res.status(400).json({ success: false, message: "Offline" });
 
+        const commandForSocket = action === 'BLOCK' ? "LOCK" : "UNLOCK";
         const commandToSend = action === 'BLOCK' ? "lock_device" : "unlock_device";
 
+        // 🚀 REAL-TIME SOCKET TRIGGER
+        const io = req.app.get('io');
+        if (io) {
+            io.to(device.imei).emit(`COMMAND_${device.imei}`, {
+                command: commandForSocket,
+                reason: reason || "Admin Action"
+            });
+        }
+
+        // FIREBASE BACKUP
         await admin.messaging().send({
             token: device.fcm_token,
             data: {
                 command: String(commandToSend),
-                // 🚀 FIXED: Guaranteed String fallback to prevent Firebase crashes
                 warning_message: action === 'BLOCK' ? String(reason || "Device Locked by Admin") : "Unlocked",
                 shop_phone: String(device.shopkeeper_id?.phone || "Support")
             },
@@ -320,7 +329,6 @@ export const toggleDeviceLock = async (req, res) => {
         device.is_locked = (action === 'BLOCK');
         await device.save();
 
-        // 🚀 TRIGGER ACTIVITY LOG
         await logActivity(
             req.user,
             action === 'BLOCK' ? 'LOCK_OVERRIDE' : 'UNLOCK_OVERRIDE',
@@ -348,12 +356,17 @@ export const trackDevice = async (req, res) => {
             return res.status(400).json({ success: false, message: "Device is OFFLINE or has no active connection token." });
         }
 
+        // 🚀 REAL-TIME SOCKET TRIGGER
+        const io = req.app.get('io');
+        if (io) {
+            io.to(device.imei).emit(`COMMAND_${device.imei}`, { command: "TRACK" });
+        }
+
         await admin.messaging().send({
             token: device.fcm_token,
             data: {
                 command: "track_location",
                 device_id: String(deviceId),
-                // 🚀 FIXED: Guaranteed string fallback
                 reason: String(reason || "System Track")
             },
             android: { priority: "high" }
@@ -401,7 +414,7 @@ export const confirmDeviceStatus = async (req, res) => {
     } catch (error) { res.status(500).json({ success: false }); }
 };
 
-// 11. Full Uninstall / Release (🚀 FIXED HANDSHAKE LOGIC)
+// 11. Full Uninstall / Release
 export const uninstallDevice = async (req, res) => {
     try {
         const { deviceId } = req.body;
@@ -416,7 +429,13 @@ export const uninstallDevice = async (req, res) => {
 
         if (!device.fcm_token) return res.status(400).json({ success: false, message: "Device offline or has no token" });
 
-        // 🚀 1. Send via FCM (Background Wakeup)
+        // 🚀 REAL-TIME SOCKET TRIGGER
+        const io = req.app.get('io');
+        if (io) {
+            io.to(device.imei).emit(`COMMAND_${device.imei}`, { command: "FULL_UNINSTALL" });
+        }
+
+        // 🚀 FIREBASE BACKUP
         await admin.messaging().send({
             token: device.fcm_token,
             data: {
@@ -425,12 +444,6 @@ export const uninstallDevice = async (req, res) => {
             },
             android: { priority: "high" }
         });
-
-        // 🚀 2. Send via Socket.io (Real-Time Active Connection Redundancy)
-        const io = req.app.get('io');
-        if (io) {
-            io.emit("device_command", { deviceId: String(deviceId), command: "full_uninstall" });
-        }
 
         device.is_locked = false;
         await device.save();
@@ -447,13 +460,12 @@ export const uninstallDevice = async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// 12. Confirm Status (🚀 FIXED FRONTEND SYNC LOGIC)
+// 12. Confirm Status
 export const confirmUninstallStatus = async (req, res) => {
     try {
         const { deviceId } = req.body;
         await Device.findByIdAndUpdate(deviceId, { license_status: 'UNINSTALLED', is_locked: false });
 
-        // 🚀 Broadcast to frontend dashboards to remove the device from active views instantly
         const io = req.app.get('io');
         if (io) {
             io.emit("device_uninstalled_success", { deviceId });
@@ -481,13 +493,10 @@ export const pushAppUpdate = async (req, res) => {
             return res.status(400).json({ success: false, message: "Device is OFFLINE or has no active connection token." });
         }
 
-        // Send the command via Firebase Admin SDK
         await admin.messaging().send({
             token: device.fcm_token,
             data: {
                 command: "update_app",
-                // 🚀 FIXED: Changed from v2 to your correct v12 URL!
-                // 🚀 FIXED: Pointing to the correct /update/ folder
                 url: String(apkUrl || "https://server.trvnx.com/update/trvnx-v12.apk")
             },
             android: { priority: "high" }
@@ -508,12 +517,11 @@ export const pushAppUpdate = async (req, res) => {
     }
 };
 
-// 🚀 NEW: THE AUTOMATED LOCKING ENGINE
+// 🚀 AUTOMATED LOCKING ENGINE
 export const runAutomatedDueCheck = async (io) => {
     try {
         const now = new Date();
 
-        // 1. Find devices: Past due date, NOT already locked, and AUTO_LOCK is enabled
         const overdueDevices = await Device.find({
             next_due_date: { $lt: now },
             is_locked: false,
@@ -525,19 +533,25 @@ export const runAutomatedDueCheck = async (io) => {
 
         for (const device of overdueDevices) {
             if (device.fcm_token) {
-                // 2. Send Lock Signal via Firebase
+                // 🚀 SOCKET TRIGGER
+                if (io) {
+                    io.to(device.imei).emit(`COMMAND_${device.imei}`, {
+                        command: "LOCK",
+                        reason: "EMI Overdue: Please contact shop."
+                    });
+                }
+
+                // FIREBASE BACKUP
                 await admin.messaging().send({
                     token: device.fcm_token,
                     data: {
                         command: "lock_device",
                         warning_message: "EMI Overdue: Please contact shop.",
-                        // 🚀 FIXED: Ensure shop phone doesn't pass 'undefined' to FCM
                         shop_phone: String(device.shopkeeper_id?.phone || "Support")
                     },
                     android: { priority: "high" }
                 });
 
-                // 3. Update Database
                 device.is_locked = true;
                 await device.save();
                 console.log(`[AUTO-LOCK] Locked device for ${device.customer_name} (Overdue)`);
