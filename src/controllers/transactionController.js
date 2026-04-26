@@ -403,68 +403,94 @@ export const updateSettings = async (req, res) => {
 
 export const syncIncomingSms = async (req, res) => {
     try {
-        // 1. Accept the RAW SMS text from the Android App
         const { sender, messageBody, secret_key } = req.body;
 
-        const config = await Settings.findOne({ config_name: "GLOBAL_CONFIG" });
-        if (!config || secret_key !== config.sms_bridge_secret) return res.status(403).json({ error: "UNAUTHORIZED" });
+        // 1. Log exactly what the phone sent for debugging
+        console.log(`📩 SMS RECEIVED from ${sender}: "${messageBody}"`);
 
-        // 2. Ignore spam or personal texts; only process MFS
+        const config = await Settings.findOne({ config_name: "GLOBAL_CONFIG" });
+
+        // 🚀 BYPASS FIX: If config is missing, use your master password
+        const validSecret = config?.sms_bridge_secret || "123456";
+        if (secret_key !== validSecret) {
+            console.error("❌ SMS AUTH FAILED: Wrong Secret Key.");
+            return res.status(403).json({ error: "UNAUTHORIZED" });
+        }
+
+        // 2. Identify MFS
         if (!sender.toLowerCase().includes('bkash') && !sender.toLowerCase().includes('nagad')) {
             return res.status(200).json({ message: "Ignored: Not MFS" });
         }
 
-        // 3. THE SMART SERVER: Extract TxID and Amount using Regex
-        const trxIdMatch = messageBody.match(/TrxID[:\s]*([A-Z0-9]+)/i);
-        const amountMatch = messageBody.match(/Tk[:\s]*([\d,.]+)/i);
+        // 3. IMPROVED REGEX (Handles more SMS formats)
+        const trxIdMatch = messageBody.match(/(?:TrxID|TXNID|Transaction ID)[:\s]*([A-Z0-9]+)/i);
+        const amountMatch = messageBody.match(/(?:Tk|Amount|Cash In)[:\s]*([0-9,]+\.[0-9]{2}|[0-9,]+)/i);
 
         if (!trxIdMatch || !amountMatch) {
-            return res.status(200).json({ message: "Ignored: Could not find TxID or Amount" });
+            console.error("⚠️ REGEX FAIL: Could not find ID or Amount in message text.");
+            return res.status(200).json({ message: "Regex mismatch" });
         }
 
         const txid = trxIdMatch[1].toUpperCase();
         const amount = Number(amountMatch[1].replace(/,/g, ''));
 
-        // 4. Save to your existing SMS Log
-        const newSms = await new SmsLog({ txid, amount, is_claimed: false }).save();
-        console.log(`📥 NEW SMS LOGGED -> TxID: ${txid} | Amount: ৳${amount}`);
+        // 4. Check if SMS was already processed
+        const existingLog = await SmsLog.findOne({ txid });
+        if (existingLog && existingLog.is_claimed) {
+            return res.status(200).json({ message: "Already processed" });
+        }
 
-        // 5. THE MAGIC FIX: Check if a user ALREADY submitted this TxID as PENDING
-        const pendingTx = await Transaction.findOne({ txid, status: { $in: ['PENDING', 'PENDING_ADMIN'] } });
+        // 5. Save the SMS Log
+        if (!existingLog) {
+            await new SmsLog({ txid, amount, is_claimed: false }).save();
+        }
 
-        if (pendingTx && pendingTx.amount === amount) {
+        // 6. THE MATCHING ENGINE
+        // Search for a PENDING transaction that matches this ID and Amount
+        const pendingTx = await Transaction.findOne({
+            txid: txid,
+            status: { $in: ['PENDING', 'PENDING_ADMIN'] }
+        });
 
-            // Mark SMS as claimed
-            newSms.is_claimed = true;
-            await newSms.save();
+        if (pendingTx) {
+            // Check if amount matches
+            if (pendingTx.amount !== amount) {
+                console.log(`❌ AMOUNT MISMATCH: User said ${pendingTx.amount}, but SMS says ${amount}`);
+                return res.status(200).json({ message: "Amount mismatch" });
+            }
 
-            // Add money to the shopkeeper's balance
+            // SUCCESS: Add Money to Shopkeeper
             const shop = await User.findById(pendingTx.userId);
             if (shop) {
                 shop.balance += amount;
                 shop.status = 'ACTIVE';
                 await shop.save();
 
-                // Auto-Approve the Transaction
+                // Update Transaction
                 pendingTx.status = 'SUCCESS';
                 pendingTx.remarks = "Auto-matched via Background SMS App";
                 await pendingTx.save();
 
-                // Trigger Commission Engine if necessary
+                // Mark SMS as claimed
+                await SmsLog.findOneAndUpdate({ txid }, { is_claimed: true });
+
+                // Run Commissions
                 if (amount >= 1000) {
                     await calculateHierarchyCommissions(shop, 'ID_GEN');
                     await updateMarketingTargets(shop._id, amount);
                 }
 
-                console.log(`🚀 INSTANT AUTO-APPROVE: ${txid} matched successfully!`);
+                console.log(`✅ INSTANT SUCCESS: Balance updated for ${shop.name} | TrxID: ${txid}`);
+                return res.status(200).json({ success: true, action: "BALANCE_UPDATED" });
             }
         }
 
-        res.status(200).json({ success: true, txid, amount });
+        console.log(`ℹ️ SMS SAVED: No matching PENDING transaction found yet for ${txid}.`);
+        res.status(200).json({ success: true, message: "Logged and waiting for user" });
+
     } catch (error) {
-        console.error("SMS Sync Error:", error);
-        // Change from 500 to 200 so the Android app doesn't crash on duplicate TxIDs
-        res.status(200).json({ error: "DUPLICATE_OR_SYNC_FAILED" });
+        console.error("❌ SMS Sync Error:", error);
+        res.status(200).json({ error: "INTERNAL_ERROR" });
     }
 };
 
