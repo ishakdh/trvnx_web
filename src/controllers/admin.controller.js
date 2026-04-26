@@ -127,6 +127,7 @@ export const getAuditLogs = async (req, res) => {
         // 🚀 FIXED: Increased limit to 2000 so nothing gets skipped or hidden on the frontend
         const logs = await ActivityLog.find()
             .populate('performed_by', 'name role')
+            .populate('target_id', 'customer_name _id') // 🚀 ADDED THIS NEW LINE HERE
             .sort({ createdAt: -1 })
             .limit(2000);
 

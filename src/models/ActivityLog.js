@@ -6,7 +6,7 @@ const activityLogSchema = new mongoose.Schema({
     performed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 
     action_type: { type: String, required: true },
-    target_id: { type: mongoose.Schema.Types.ObjectId },
+    target_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Device' },
     target_imei: String,
     reason: { type: String, required: true },
     ip_address: String,
