@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 
 const activityLogSchema = new mongoose.Schema({
-    performed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // 🚀 THE FINAL FIX: Changed required to false!
+    // Now Mongoose will let the system save the log even if there is no specific User ID.
+    performed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 
-    // 🚀 FIXED: Removed the 'enum' restriction completely.
-    // Now it will accept EVERY action without rejecting or skipping anything.
     action_type: { type: String, required: true },
-
     target_id: { type: mongoose.Schema.Types.ObjectId },
     target_imei: String,
     reason: { type: String, required: true },
