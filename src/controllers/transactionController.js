@@ -123,40 +123,57 @@ const updateMarketingTargets = async (userId, amount) => {
 
 export const createDeposit = async (req, res) => {
     try {
-        const { userId, amount, method, txid } = req.body;
+        // 🚀 FIX: Destructure both the names the frontend might send
+        const {
+            userId,
+            shopkeeperId,
+            amount,
+            method,
+            gateway,
+            txid,
+            transactionId
+        } = req.body;
+
+        // 🚀 SMART MAPPING: Use whichever name is provided
+        const finalUserId = userId || shopkeeperId;
+        const finalTxid = txid || transactionId;
+        const finalMethod = method || (gateway?.type ? gateway.type.toUpperCase() : 'BKASH');
+
         const numAmount = Number(amount);
 
         const config = await Settings.findOne({ config_name: "GLOBAL_CONFIG" });
         if (!config) return res.status(500).json({ message: "System settings not initialized." });
 
-        if (txid) {
-            const alreadyUsed = await Transaction.findOne({ txid, status: 'SUCCESS' });
+        if (finalTxid) {
+            const alreadyUsed = await Transaction.findOne({ txid: finalTxid, status: 'SUCCESS' });
             if (alreadyUsed) return res.status(403).json({ success: false, message: "TrxID already claimed." });
         }
 
-        if (method === 'CASH') {
+        // Handle CASH method
+        if (finalMethod.includes('CASH')) {
             if (!config.allow_cash) return res.status(403).json({ message: "Cash disabled." });
-            await new Transaction({ userId, amount: numAmount, method: 'CASH', type: 'RECHARGE', status: 'PENDING' }).save();
+            await new Transaction({ userId: finalUserId, amount: numAmount, method: 'CASH', type: 'RECHARGE', status: 'PENDING' }).save();
             return res.status(201).json({ success: true, message: "Cash logged. Awaiting Admin." });
         }
 
-        if (['BKASH', 'NAGAD', 'PERSONAL'].includes(method)) {
+        // Handle bKash/Nagad/Personal
+        if (['BKASH', 'NAGAD', 'PERSONAL', 'BKASH PERSONAL', 'NAGAD PERSONAL'].some(m => finalMethod.includes(m))) {
             if (!config.allow_personal_sms) return res.status(403).json({ message: "Mobile deposits disabled." });
 
-            const match = await SmsLog.findOne({ txid, is_claimed: false });
+            const match = await SmsLog.findOne({ txid: finalTxid, is_claimed: false });
 
             if (match && match.amount === numAmount) {
                 match.is_claimed = true;
                 await match.save();
 
-                const shop = await User.findById(userId);
+                const shop = await User.findById(finalUserId);
                 shop.balance += numAmount;
                 shop.status = 'ACTIVE';
                 shop.custom_license_fee = config.base_license_price;
                 await shop.save();
 
                 await new Transaction({
-                    userId, amount: numAmount, method, txid, type: 'RECHARGE', status: 'SUCCESS', remarks: "Auto-matched via SMS"
+                    userId: finalUserId, amount: numAmount, method: finalMethod, txid: finalTxid, type: 'RECHARGE', status: 'SUCCESS', remarks: "Auto-matched via SMS"
                 }).save();
 
                 if (numAmount >= 1000) {
@@ -166,13 +183,15 @@ export const createDeposit = async (req, res) => {
 
                 return res.status(200).json({ success: true, message: "INSTANT_MATCH: Balance added." });
             } else {
+                // If no SMS match yet, save as PENDING
                 await new Transaction({
-                    userId, amount: numAmount, method, txid, type: 'RECHARGE', status: 'PENDING', remarks: "Awaiting SMS verification."
+                    userId: finalUserId, amount: numAmount, method: finalMethod, txid: finalTxid, type: 'RECHARGE', status: 'PENDING', remarks: "Awaiting SMS verification."
                 }).save();
                 return res.status(201).json({ success: true, message: "TrxID pending verification." });
             }
         }
     } catch (error) {
+        console.error("Deposit Error:", error);
         res.status(500).json({ message: "Deposit Failed", error: error.message });
     }
 };
