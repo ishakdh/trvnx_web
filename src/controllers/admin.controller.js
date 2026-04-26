@@ -4,6 +4,7 @@ import Transaction from "../models/Transaction.js";
 import Target from "../models/Target.js";
 import Settings from "../models/Settings.js";
 import { logActivity } from '../utils/logger.js';
+import Device from '../models/Device.js';
 
 // 🚀 BULLETPROOF COMMISSION ENGINE
 async function calculateHierarchyCommissions(shopkeeper, type) {
@@ -124,14 +125,35 @@ const updateMarketingTargets = async (userId, amount) => {
 
 export const getAuditLogs = async (req, res) => {
     try {
-        // 🚀 FIXED: Increased limit to 2000 so nothing gets skipped or hidden on the frontend
+        // 1. Fetch logs as plain JavaScript objects using .lean()
         const logs = await ActivityLog.find()
             .populate('performed_by', 'name role')
-            .populate('target_id', 'customer_name _id') // 🚀 ADDED THIS NEW LINE HERE
             .sort({ createdAt: -1 })
-            .limit(2000);
+            .limit(2000)
+            .lean();
 
-        res.json(logs);
+        // 2. Safely gather only the IDs that belong to actual Devices
+        const deviceIds = logs.filter(log => log.target_imei).map(log => log.target_id);
+
+        // 3. Fetch the customer names for those specific devices
+        const devices = await Device.find({ _id: { $in: deviceIds } }, 'customer_name').lean();
+        const deviceMap = {};
+        devices.forEach(d => {
+            deviceMap[d._id.toString()] = d.customer_name;
+        });
+
+        // 4. Attach the customer name only if it's a device, leaving Shop/Tx IDs perfectly intact
+        const safeLogs = logs.map(log => {
+            if (log.target_imei && log.target_id && deviceMap[log.target_id.toString()]) {
+                log.target_id = {
+                    _id: log.target_id,
+                    customer_name: deviceMap[log.target_id.toString()]
+                };
+            }
+            return log;
+        });
+
+        res.json(safeLogs);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
