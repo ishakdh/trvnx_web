@@ -4,7 +4,7 @@ import Transaction from '../models/Transaction.js';
 import LicenseFee from '../models/LicenseFee.js';
 import crypto from 'crypto';
 import admin from '../lib/firebase.js';
-import { logActivity } from '../utils/logger.js';
+import { logActivity } from '../middlewares/activityLogger.js';
 
 // 🚀 HIERARCHY COMMISSION HANDLER
 async function runCommissionEngine(shopkeeper, type) {
