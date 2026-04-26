@@ -109,8 +109,49 @@ app.use('/api/marketing', marketingRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/test', testRoutes);
 
-app.get("/health", (req, res) => {
-    res.status(200).json({ status: "OK", service: "TRVNX API Server" });
+// 🚀 SMS GATEWAY AUTOMATION
+app.post('/api/transaction/sync-sms', async (req, res) => {
+    const { sender, messageBody, secret_key } = req.body;
+
+    // 1. Security Check
+    if (secret_key !== process.env.MASTER_PASSWORD) {
+        console.error("❌ SMS GATEWAY: Unauthorized attempt.");
+        return res.status(403).json({ error: "UNAUTHORIZED" });
+    }
+
+    // 2. Extract Data (Regex)
+    const trxMatch = messageBody.match(/(?:TrxID|TXNID|Transaction ID)[:\s]+([A-Z0-9]+)/i);
+    const amountMatch = messageBody.match(/(?:Tk|Amount|Cash In)[:\s]+([0-9,]+\.[0-9]{2})/i);
+
+    if (trxMatch && amountMatch) {
+        const trxId = trxMatch[1];
+        const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+
+        console.log(`✅ SMS MATCH: TrxID: ${trxId}, Amount: ${amount}`);
+
+        try {
+            // 3. Update Database
+            const Transaction = (await import('./src/models/Transaction.js')).default;
+            const User = (await import('./src/models/User.js')).default;
+
+            const txn = await Transaction.findOne({ trxId: trxId, status: 'PENDING' });
+
+            if (txn && txn.amount === amount) {
+                txn.status = 'COMPLETED';
+                await txn.save();
+                await User.findByIdAndUpdate(txn.userId, { $inc: { balance: amount } });
+                console.log(`💰 SUCCESS: Balance added to User ${txn.userId}`);
+                return res.status(200).json({ status: "success" });
+            } else {
+                console.log("⚠️ Transaction not found or amount mismatch.");
+                return res.status(404).json({ error: "Not found or mismatch" });
+            }
+        } catch (err) {
+            console.error("❌ DB Error:", err);
+            return res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+    res.status(200).json({ status: "ignored" });
 });
 
 app.get('/', (req, res) => res.send('🚀 TRVNX API ONLINE'));
