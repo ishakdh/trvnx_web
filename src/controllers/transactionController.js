@@ -123,76 +123,71 @@ const updateMarketingTargets = async (userId, amount) => {
 
 export const createDeposit = async (req, res) => {
     try {
-        // 🚀 FIX: Destructure both the names the frontend might send
-        const {
-            userId,
-            shopkeeperId,
-            amount,
-            method,
-            gateway,
-            txid,
-            transactionId
-        } = req.body;
+        const { shopkeeperId, userId, amount, transactionId, txid, method, gateway } = req.body;
 
-        // 🚀 SMART MAPPING: Use whichever name is provided
         const finalUserId = userId || shopkeeperId;
-        const finalTxid = txid || transactionId;
-        const finalMethod = method || (gateway?.type ? gateway.type.toUpperCase() : 'BKASH');
-
+        const finalTxid = (txid || transactionId || "").toUpperCase().trim();
+        const finalMethod = method || (gateway?.type ? gateway.type.toUpperCase() : 'MFS');
         const numAmount = Number(amount);
 
-        const config = await Settings.findOne({ config_name: "GLOBAL_CONFIG" });
-        if (!config) return res.status(500).json({ message: "System settings not initialized." });
+        // 1. Search the SMS Log for an UNCLAIMED match
+        const match = await SmsLog.findOne({ txid: finalTxid, is_claimed: false });
 
-        if (finalTxid) {
-            const alreadyUsed = await Transaction.findOne({ txid: finalTxid, status: 'SUCCESS' });
-            if (alreadyUsed) return res.status(403).json({ success: false, message: "TrxID already claimed." });
-        }
+        // 2. SCENARIO A: MATCH FOUND -> APPROVE IMMEDIATELY
+        if (match && match.amount === numAmount) {
+            match.is_claimed = true;
+            await match.save();
 
-        // Handle CASH method
-        if (finalMethod.includes('CASH')) {
-            if (!config.allow_cash) return res.status(403).json({ message: "Cash disabled." });
-            await new Transaction({ userId: finalUserId, amount: numAmount, method: 'CASH', type: 'RECHARGE', status: 'PENDING' }).save();
-            return res.status(201).json({ success: true, message: "Cash logged. Awaiting Admin." });
-        }
+            const shop = await User.findById(finalUserId);
+            if (!shop) return res.status(404).json({ success: false, message: "User not found." });
 
-        // Handle bKash/Nagad/Personal
-        if (['BKASH', 'NAGAD', 'PERSONAL', 'BKASH PERSONAL', 'NAGAD PERSONAL'].some(m => finalMethod.includes(m))) {
-            if (!config.allow_personal_sms) return res.status(403).json({ message: "Mobile deposits disabled." });
+            shop.balance += numAmount;
+            shop.status = 'ACTIVE';
+            await shop.save();
 
-            const match = await SmsLog.findOne({ txid: finalTxid, is_claimed: false });
+            await new Transaction({
+                userId: finalUserId,
+                amount: numAmount,
+                method: finalMethod,
+                txid: finalTxid,
+                type: 'RECHARGE',
+                status: 'SUCCESS',
+                remarks: "Auto-Approved: SMS Match Found."
+            }).save();
 
-            if (match && match.amount === numAmount) {
-                match.is_claimed = true;
-                await match.save();
-
-                const shop = await User.findById(finalUserId);
-                shop.balance += numAmount;
-                shop.status = 'ACTIVE';
-                shop.custom_license_fee = config.base_license_price;
-                await shop.save();
-
-                await new Transaction({
-                    userId: finalUserId, amount: numAmount, method: finalMethod, txid: finalTxid, type: 'RECHARGE', status: 'SUCCESS', remarks: "Auto-matched via SMS"
-                }).save();
-
-                if (numAmount >= 1000) {
-                    await calculateHierarchyCommissions(shop, 'ID_GEN');
-                    await updateMarketingTargets(shop._id, numAmount);
-                }
-
-                return res.status(200).json({ success: true, message: "INSTANT_MATCH: Balance added." });
-            } else {
-                // If no SMS match yet, save as PENDING
-                await new Transaction({
-                    userId: finalUserId, amount: numAmount, method: finalMethod, txid: finalTxid, type: 'RECHARGE', status: 'PENDING', remarks: "Awaiting SMS verification."
-                }).save();
-                return res.status(201).json({ success: true, message: "TrxID pending verification." });
+            // Run Commissions if applicable
+            if (numAmount >= 1000) {
+                await calculateHierarchyCommissions(shop, 'ID_GEN');
+                await updateMarketingTargets(shop._id, numAmount);
             }
+
+            return res.status(200).json({
+                success: true,
+                message: "SUCCESS",
+                newBalance: shop.balance
+            });
         }
+
+        // 3. SCENARIO B: NO MATCH OR WRONG AMOUNT -> REJECT IMMEDIATELY
+        // We log it as REJECTED so you can see fraud attempts in your admin panel
+        await new Transaction({
+            userId: finalUserId,
+            amount: numAmount,
+            method: finalMethod,
+            txid: finalTxid,
+            type: 'RECHARGE',
+            status: 'REJECTED',
+            remarks: "Instant Reject: No matching SMS proof found."
+        }).save();
+
+        return res.status(400).json({
+            success: false,
+            message: "INVALID_TRANSACTION: We could not verify this payment. Ensure you sent the correct amount and try again."
+        });
+
     } catch (error) {
-        console.error("Deposit Error:", error);
-        res.status(500).json({ message: "Deposit Failed", error: error.message });
+        console.error("Deposit Logic Error:", error);
+        res.status(500).json({ success: false, message: "SERVER_ERROR" });
     }
 };
 
