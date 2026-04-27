@@ -111,17 +111,14 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/test', testRoutes);
 
-// 🚀 SMS GATEWAY AUTOMATION
+// 🚀 UPDATED SMS GATEWAY: Matches your "Direct Claim" UI
 app.post('/api/transaction/sync-sms', async (req, res) => {
-    const { sender, messageBody, secret_key } = req.body;
+    const { messageBody, secret_key } = req.body;
 
-    // 1. Security Check
     if (secret_key !== process.env.MASTER_PASSWORD) {
-        console.error("❌ SMS GATEWAY: Unauthorized attempt.");
         return res.status(403).json({ error: "UNAUTHORIZED" });
     }
 
-    // 2. Extract Data (Regex)
     const trxMatch = messageBody.match(/(?:TrxID|TXNID|Transaction ID)[:\s]+([A-Z0-9]+)/i);
     const amountMatch = messageBody.match(/(?:Tk|Amount|Cash In)[:\s]+([0-9,]+\.[0-9]{2})/i);
 
@@ -129,27 +126,27 @@ app.post('/api/transaction/sync-sms', async (req, res) => {
         const trxId = trxMatch[1];
         const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
 
-        console.log(`✅ SMS MATCH: TrxID: ${trxId}, Amount: ${amount}`);
-
         try {
-            // 3. Update Database
-            const Transaction = (await import('./src/models/Transaction.js')).default;
-            const User = (await import('./src/models/User.js')).default;
+            const SmsTransaction = (await import('./src/models/SmsTransaction.js')).default;
 
-            const txn = await Transaction.findOne({ trxId: trxId, status: 'PENDING' });
+            // Check if this SMS was already received
+            const existingSms = await SmsTransaction.findOne({ trxId });
+            if (existingSms) return res.status(200).json({ status: "already_exists" });
 
-            if (txn && txn.amount === amount) {
-                txn.status = 'COMPLETED';
-                await txn.save();
-                await User.findByIdAndUpdate(txn.userId, { $inc: { balance: amount } });
-                console.log(`💰 SUCCESS: Balance added to User ${txn.userId}`);
-                return res.status(200).json({ status: "success" });
-            } else {
-                console.log("⚠️ Transaction not found or amount mismatch.");
-                return res.status(404).json({ error: "Not found or mismatch" });
-            }
+            // Save the SMS to the database so it can be "Claimed" later
+            const newSms = new SmsTransaction({
+                senderNumber: req.body.sender || "Unknown",
+                trxId: trxId,
+                amount: amount,
+                gateway: "Auto-Gateway",
+                status: 'WAITING'
+            });
+
+            await newSms.save();
+            console.log(`✅ SMS STORED: ID ${trxId} for ${amount} Tk is now ready to be claimed.`);
+            return res.status(200).json({ status: "success" });
         } catch (err) {
-            console.error("❌ DB Error:", err);
+            console.error("❌ SMS Save Error:", err);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     }
