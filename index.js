@@ -18,6 +18,7 @@ import transactionRoutes from './src/routes/transaction.routes.js';
 import marketingRoutes from './src/routes/marketing.routes.js';
 import locationRoutes from './src/routes/locationRoutes.js';
 import testRoutes from "./src/routes/test.routes.js";
+import paymentRoutes from './src/routes/payment.routes.js'; // ✅ ADDED LINE 1
 import User from "./src/models/User.js";
 
 // 🚀 RESTORED: This was missing and would cause a crash!
@@ -107,6 +108,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/marketing', marketingRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/payment', paymentRoutes); // ✅ ADDED LINE 2
 app.use('/test', testRoutes);
 
 // 🚀 SMS GATEWAY AUTOMATION
@@ -190,4 +192,3 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log("--------------------------------------------------");
 });
-
