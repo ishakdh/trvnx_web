@@ -36,7 +36,7 @@ router.post('/track', trackDevice);
 router.post('/heartbeat', updateHeartbeat);
 router.post('/uninstall', uninstallDevice);
 
-// App Feedback Routes (App -> Server)
+// App Feedback Routes (App -> Server)//
 router.post('/confirm-status', confirmDeviceStatus);
 router.post('/update-location', updateDeviceLocation);
 router.post('/confirm-uninstall', confirmUninstallStatus); // 🚀 FIXED: Added the route to catch the app's success message

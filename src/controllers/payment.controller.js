@@ -25,7 +25,7 @@ export const receiveSmsData = async (req, res) => {
     }
 };
 
-// 2. User Submits Transaction ID (Automated Verification)
+// 2. User Submits Transaction ID (Automated Verification)//
 export const verifyUserPayment = async (req, res) => {
     try {
         const { userId, trxId } = req.body;
