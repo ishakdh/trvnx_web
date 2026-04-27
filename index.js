@@ -18,7 +18,7 @@ import transactionRoutes from './src/routes/transaction.routes.js';
 import marketingRoutes from './src/routes/marketing.routes.js';
 import locationRoutes from './src/routes/locationRoutes.js';
 import testRoutes from "./src/routes/test.routes.js";
-import paymentRoutes from './src/routes/payment.routes.js'; // ✅ ADDED LINE 1
+import paymentRoutes from './src/routes/payment.routes.js';
 import User from "./src/models/User.js";
 
 // 🚀 RESTORED: This was missing and would cause a crash!
@@ -108,7 +108,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/marketing', marketingRoutes);
 app.use('/api/locations', locationRoutes);
-app.use('/api/payment', paymentRoutes); // ✅ ADDED LINE 2
+app.use('/api/payment', paymentRoutes);
 app.use('/test', testRoutes);
 
 // 🚀 SMS GATEWAY AUTOMATION
@@ -167,8 +167,6 @@ io.on("connection", (socket) => {
         if (data && data.device_id) {
             // Put this socket connection into a specific room named after the device ID
             socket.join(data.device_id);
-            // Optional: You can log this to verify phones are connecting
-            // console.log(`📱 Device ${data.device_id} is online and ready for commands.`);
         }
     });
 
