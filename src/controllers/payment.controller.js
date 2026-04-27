@@ -4,12 +4,16 @@ import User from '../models/User.js';
 // 1. Webhook for Android SMS App (Pushes data to server)
 export const receiveSmsData = async (req, res) => {
     try {
+        // 🕵️ ADDED THIS LINE: The Spy Line to catch the 403 error cause
+        console.log("DEBUG: Incoming Request Body:", JSON.stringify(req.body));
+
         // Destructure all possible fields from the app
         const { senderNumber, sender, trxId, amount, gateway, message, messageBody, secret_key } = req.body;
 
         // 🛡️ SECURITY: Check master password before doing anything
         if (secret_key !== process.env.MASTER_PASSWORD) {
             console.error("❌ SMS WEBHOOK: Unauthorized Access Attempt");
+            // If this fails, look at the DEBUG log above to see what the app actually sent
             return res.status(403).json({ success: false, message: 'UNAUTHORIZED' });
         }
 
@@ -77,7 +81,6 @@ export const verifyUserPayment = async (req, res) => {
             await transaction.save();
 
             // 🚀 THE AUTOMATION: Update the Shopkeeper's actual balance
-            // Note: Using current_balance as per your original requirement
             await User.findByIdAndUpdate(userId, {
                 $inc: { current_balance: transaction.amount }
             });
