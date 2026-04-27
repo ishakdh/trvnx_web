@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import User from './src/models/User.js';
 // 🚀 1. Import the new controller function
 import { runAutomatedDueCheck } from './src/controllers/device.controller.js';
+import paymentRoutes from './src/routes/payment.routes.js';
 
 const app = express();
 app.use(cors());

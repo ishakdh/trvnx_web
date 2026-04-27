@@ -8,6 +8,7 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import bcrypt from "bcryptjs";
+import paymentRoutes from './src/routes/payment.routes.js';
 
 // 🚀 RESTORED: All of your main system routes
 import authRoutes from './src/routes/auth.routes.js';
@@ -84,6 +85,7 @@ seedSuperAdmin().catch(err => console.error("Seed Warning:", err));
 // 🚀 RESTORED: These are the critical lines that fix your 404 Error!
 app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/payment', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/admin', adminRoutes);
