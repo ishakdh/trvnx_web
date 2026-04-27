@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const smsTransactionSchema = new mongoose.Schema({
     senderNumber: {
@@ -30,4 +30,6 @@ const smsTransactionSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('SmsTransaction', smsTransactionSchema);
+// 🚀 CHANGE THIS LINE FROM module.exports TO export default
+const SmsTransaction = mongoose.model('SmsTransaction', smsTransactionSchema);
+export default SmsTransaction;
