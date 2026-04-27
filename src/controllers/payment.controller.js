@@ -47,9 +47,8 @@ export const verifyUserPayment = async (req, res) => {
             await transaction.save();
 
             // 🚀 THE AUTOMATION: Update the Shopkeeper's actual balance
-            // I used 'unused_balance' based on your Sidebar names, change if your field is different
             await User.findByIdAndUpdate(userId, {
-                $inc: { unused_balance: transaction.amount }
+                $inc: { current_balance: transaction.amount } // ✅ Matches your Dashboard
             });
 
             return res.status(200).json({

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, required: true, unique: true, trim: true },
     password: { type: String, required: true },
     parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
@@ -45,10 +45,11 @@ const userSchema = new mongoose.Schema({
         market_name: String
     },
 
-    balance: { type: Number, default: 0, min: 0 },
+    current_balance: { type: Number, default: 0, min: 0 },
+    total_recharged: { type: Number, default: 0 },
     commission_earned: { type: Number, default: 0 },
+    custom_license_fee: { type: Number, default: 300 },
 
-    custom_license_fee: { type: Number, default: 2000 },
 
     // 🚀 UPDATED: Merged your existing commission logic with the new Distributor fields
     commissions: {
@@ -56,7 +57,7 @@ const userSchema = new mongoose.Schema({
         license: { fixed: { type: Number, default: 0 }, percent: { type: Number, default: 0 } },
         per_user: { type: Number, default: 0 },
         per_license: { type: Number, default: 0 },
-        salary: { type: Number, default: 0 } // 🚀 NEW: Added SR Salary configuration
+        salary: { type: Number, default: 0 }
     },
 
     role: {
