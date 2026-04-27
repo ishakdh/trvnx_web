@@ -8,7 +8,7 @@ import { createServer } from "http";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import bcrypt from "bcryptjs";
-import paymentRoutes from './src/routes/payment.routes.js';
+import paymentRoutes from './src/routes/payment.routes.js'; // 🚀 FIXED: Added ./src/ back here
 
 // 🚀 RESTORED: All of your main system routes
 import authRoutes from './src/routes/auth.routes.js';
