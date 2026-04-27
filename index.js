@@ -111,46 +111,58 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/test', testRoutes);
 
-// 🚀 UPDATED SMS GATEWAY: Matches your "Direct Claim" UI
+// 🚀 BULLETPROOF SMS GATEWAY (Stops 500 Errors)
 app.post('/api/transaction/sync-sms', async (req, res) => {
-    const { messageBody, secret_key } = req.body;
+    try {
+        const { messageBody, message, secret_key, sender } = req.body;
 
-    if (secret_key !== process.env.MASTER_PASSWORD) {
-        return res.status(403).json({ error: "UNAUTHORIZED" });
-    }
+        // 1. Safety check for the password
+        if (secret_key !== process.env.MASTER_PASSWORD) {
+            console.error("❌ SMS: Wrong Password");
+            return res.status(403).json({ error: "UNAUTHORIZED" });
+        }
 
-    const trxMatch = messageBody.match(/(?:TrxID|TXNID|Transaction ID)[:\s]+([A-Z0-9]+)/i);
-    const amountMatch = messageBody.match(/(?:Tk|Amount|Cash In)[:\s]+([0-9,]+\.[0-9]{2})/i);
+        // 2. Safety check for the message content
+        const actualMessage = messageBody || message; // Catch both formats
+        if (!actualMessage) {
+            console.error("⚠️ SMS: No message content received in request body.");
+            return res.status(400).json({ error: "Empty message" });
+        }
 
-    if (trxMatch && amountMatch) {
-        const trxId = trxMatch[1];
-        const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+        console.log("📩 PROCESSING SMS:", actualMessage);
 
-        try {
+        const trxMatch = actualMessage.match(/(?:TrxID|TXNID|Transaction ID)[:\s]*([A-Z0-9]+)/i);
+        const amountMatch = actualMessage.match(/(?:Tk|Amount|Cash In)[:\s]*([0-9,]+(?:\.[0-9]{1,2})?)/i);
+
+        if (trxMatch && amountMatch) {
+            const trxId = trxMatch[1];
+            const amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+
             const SmsTransaction = (await import('./src/models/SmsTransaction.js')).default;
 
-            // Check if this SMS was already received
             const existingSms = await SmsTransaction.findOne({ trxId });
             if (existingSms) return res.status(200).json({ status: "already_exists" });
 
-            // Save the SMS to the database so it can be "Claimed" later
             const newSms = new SmsTransaction({
-                senderNumber: req.body.sender || "Unknown",
+                senderNumber: sender || "Auto-Gateway",
                 trxId: trxId,
                 amount: amount,
-                gateway: "Auto-Gateway",
+                gateway: "bKash/Nagad",
                 status: 'WAITING'
             });
 
             await newSms.save();
-            console.log(`✅ SMS STORED: ID ${trxId} for ${amount} Tk is now ready to be claimed.`);
+            console.log(`✅ SUCCESS: Stored ${amount} Tk with ID ${trxId}`);
             return res.status(200).json({ status: "success" });
-        } catch (err) {
-            console.error("❌ SMS Save Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            console.log("⚠️ IGNORED: Message doesn't look like a payment.");
+            return res.status(200).json({ status: "ignored" });
         }
+    } catch (err) {
+        // 🚀 This stops the 500 error from crashing the app
+        console.error("❌ CRITICAL SERVER ERROR:", err.message);
+        return res.status(500).json({ error: "Internal Server Error", details: err.message });
     }
-    res.status(200).json({ status: "ignored" });
 });
 
 app.get('/', (req, res) => res.send('🚀 TRVNX API ONLINE'));
