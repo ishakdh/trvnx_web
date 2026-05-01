@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 
 // Using the exact file path from your screenshot
-const filePath = 'C:/rrapp_backend/public/downloads/lindux_staff_pro.apk';
+const filePath = 'C:/rrapp_backend/public/downloads/lindux_staff_pro23.apk';
 
 try {
     const fileBuffer = fs.readFileSync(filePath);
