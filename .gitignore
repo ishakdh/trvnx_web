@@ -1,0 +1,6 @@
+# Dependencies
+node_modules/
+.env
+firebase-auth.json
+amapi-key.json
+firebase.json
