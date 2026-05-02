@@ -405,13 +405,40 @@ export const updateHeartbeat = async (req, res) => {
     } catch (error) { res.status(500).json({ success: false }); }
 };
 
-// 10. Confirm Status from Device
+// 10. Confirm Status from Device (UPDATED FOR INSTANT DASHBOARD)
 export const confirmDeviceStatus = async (req, res) => {
     try {
         const { deviceId, status } = req.body;
-        await Device.findByIdAndUpdate(deviceId, { is_locked: (status === 'LOCKED') });
+        const isLocked = (status === 'LOCKED');
+
+        // 1. Update the database
+        const device = await Device.findByIdAndUpdate(
+            deviceId,
+            { is_locked: isLocked },
+            { new: true }
+        );
+
+        if (!device) {
+            return res.status(404).json({ success: false, message: "Device not found" });
+        }
+
+        // 🚀 2. THE FIX: Trigger an instant update on the Dashboard
+        const io = req.app.get('io');
+        if (io) {
+            // We tell the dashboard: "This specific device changed status"
+            io.emit("DEVICE_STATUS_UPDATED", {
+                deviceId: deviceId,
+                is_locked: isLocked
+            });
+        }
+
+        console.log(`[CONFIRMATION] Device ${deviceId} set to ${status}. Dashboard notified.`);
         res.status(200).json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+
+    } catch (error) {
+        console.error("Confirm Status Error:", error);
+        res.status(500).json({ success: false });
+    }
 };
 
 // 11. Full Uninstall / Release

@@ -10,7 +10,8 @@ import {
     extendDueDate,
     uninstallDevice,
     confirmUninstallStatus,
-    pushAppUpdate
+    pushAppUpdate,
+    confirmDeviceStatus
 } from '../controllers/device.controller.js';
 
 // 🚀 FIXED: Imported 'auth' to match your middleware file
@@ -27,6 +28,7 @@ router.post('/register', registerDevice);
 router.post('/app-activate', activateAppLicense);
 router.post('/update-location', updateDeviceLocation);
 router.post('/confirm-uninstall', confirmUninstallStatus);
+router.post('/confirm-status', confirmDeviceStatus);
 
 // ==========================================
 // 💻 DASHBOARD-FACING ROUTES (PROTECTED)
